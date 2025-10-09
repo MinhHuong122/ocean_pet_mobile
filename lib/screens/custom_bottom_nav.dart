@@ -1,15 +1,21 @@
 // lib/widgets/custom_bottom_nav.dart
 import 'package:flutter/material.dart';
+import './home_screen.dart';
+import './diary_screen.dart';
+import './care_screen.dart';
+import './profile_screen.dart';
 
 class CustomBottomNav extends StatefulWidget {
-  const CustomBottomNav({super.key});
+  final int currentIndex;
+
+  const CustomBottomNav({super.key, this.currentIndex = 0});
 
   @override
   State<CustomBottomNav> createState() => _CustomBottomNavState();
 }
 
 class _CustomBottomNavState extends State<CustomBottomNav> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
   final List<_NavItemData> _items = [
     _NavItemData('Trang chủ', 'lib/res/drawables/setting/home.png'),
@@ -17,6 +23,12 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
     _NavItemData('Chăm sóc', 'lib/res/drawables/setting/take_care.png'),
     _NavItemData('Cá nhân', 'lib/res/drawables/setting/user.png'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.currentIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +41,9 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
           final selected = i == _selectedIndex;
           return GestureDetector(
             onTap: () {
-              setState(() {
-                _selectedIndex = i;
-              });
-              // TODO: navigate if needed
+              if (i != _selectedIndex) {
+                _navigateToScreen(context, i);
+              }
             },
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -82,6 +93,36 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
             ),
           );
         }),
+      ),
+    );
+  }
+
+  void _navigateToScreen(BuildContext context, int index) {
+    // Navigate to the corresponding screen
+    Widget screen;
+    switch (index) {
+      case 0:
+        screen = const HomeScreen();
+        break;
+      case 1:
+        screen = const DiaryScreen();
+        break;
+      case 2:
+        screen = const CareScreen();
+        break;
+      case 3:
+        screen = const ProfileScreen();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => screen,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
       ),
     );
   }
