@@ -45,7 +45,7 @@ class HomeScreen extends StatelessWidget {
                     Text(
                       'Xin chào,',
                       style: GoogleFonts.afacad(
-                        fontSize: 32,
+                        fontSize: 40,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF22223B),
                       ),
@@ -54,7 +54,7 @@ class HomeScreen extends StatelessWidget {
                     Text(
                       'chúc bạn và pet yêu một ngày hạnh phúc.',
                       style: GoogleFonts.afacad(
-                        fontSize: 15,
+                        fontSize: 18,
                         color: const Color(0xFF6B7280),
                       ),
                     ),
@@ -64,9 +64,9 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          flex: 1,
+                          flex: 5,
                           child: Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEDE9FE),
                               borderRadius: BorderRadius.circular(16),
@@ -130,9 +130,9 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          flex: 1,
+                          flex: 5,
                           child: Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFF7ED),
                               borderRadius: BorderRadius.circular(16),
@@ -250,7 +250,7 @@ class HomeScreen extends StatelessWidget {
                         Text(
                           'Bảng tin',
                           style: GoogleFonts.afacad(
-                            fontSize: 24,
+                            fontSize: 32,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -292,7 +292,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 70,
+            bottom: 85,
             right: 20,
             child: GestureDetector(
               onTap: () {},
