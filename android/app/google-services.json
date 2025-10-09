@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "989557975107",
+    "project_id": "oceanpet-7055d",
+    "storage_bucket": "oceanpet-7055d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989557975107:android:2f72b00a1a382946860cf6",
+        "android_client_info": {
+          "package_name": "com.oceanpet.ocean_pet_new"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "989557975107-ussp8vstsle8njt1lfc82qdtmit37d0e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.oceanpet.ocean_pet_new",
+            "certificate_hash": "825b4908fe299257431f794e2251d7a65804506d"
+          }
+        },
+        {
+          "client_id": "989557975107-s13et1j5m8lt89p8sp3t8b3nds75pfmf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEB4wkh1mxQM4ciNBtCJTk-XoTOy1bw2Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "989557975107-s13et1j5m8lt89p8sp3t8b3nds75pfmf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
