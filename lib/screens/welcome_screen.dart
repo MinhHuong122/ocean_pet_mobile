@@ -45,177 +45,115 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF8B5CF6), // Purple gradient
-              Color(0xFF7C3AED),
-              Color(0xFF6D28D9),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                const Spacer(),
-
-                // Logo Ocean Pet
-                Column(
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.asset(
-                          'lib/res/drawables/setting/LOGO.png',
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Icon(
-                                Icons.pets,
-                                size: 40,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+      backgroundColor: const Color(0xFF8E97FD),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Logo Ocean Pet (bigger, centered, no border)
+                  Image.asset(
+                    'lib/res/drawables/setting/LOGO.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.pets,
+                        size: 60,
+                        color: Colors.white,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Ocean Pet',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontFamily: R.font.sfpro,
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 32),
+                  if (_isLoading)
+                    const CircularProgressIndicator(color: Colors.white)
+                  else ...[
                     Text(
-                      'Ocean Pet',
+                      'Chào mừng đến với Ocean Pet',
                       style: TextStyle(
-                        fontSize: 32,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         fontFamily: R.font.sfpro,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 60),
-
-                // Welcome message
-                if (_isLoading)
-                  const CircularProgressIndicator(color: Colors.white)
-                else ...[
-                  Text(
-                    'Xin chào $_userName,',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontFamily: R.font.sfpro,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Chào mừng đến với Ocean Pet',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontFamily: R.font.sfpro,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Khám phá ứng dụng, tìm hiểu cách chăm sóc thú cưng của bạn một cách tốt nhất.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.8),
-                      fontFamily: R.font.sfpro,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-
-                const SizedBox(height: 60),
-
-                // Pet illustration
-                Container(
-                  width: double.infinity,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 200,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.asset(
-                        'lib/res/drawables/setting/LOG_2.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.pets,
-                            size: 80,
-                            color: Colors.white,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Get started button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (context) => ChoosePetScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF8B5CF6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: Text(
-                      'BẮT ĐẦU',
+                    const SizedBox(height: 16),
+                    Text(
+                      'Khám phá ứng dụng, tìm hiểu cách chăm sóc thú cưng của bạn một cách tốt nhất.',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withOpacity(0.8),
                         fontFamily: R.font.sfpro,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                  // Pet illustration (centered, no border)
+                  Image.asset(
+                    'lib/res/drawables/setting/LOG_2.png',
+                    width: 220,
+                    height: 180,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.pets,
+                        size: 80,
+                        color: Colors.white,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 40),
+                  // Get started button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => ChoosePetScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF8B5CF6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Text(
+                        'BẮT ĐẦU',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: R.font.sfpro,
+                        ),
                       ),
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 20),
-              ],
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),

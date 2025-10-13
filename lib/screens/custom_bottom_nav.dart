@@ -102,7 +102,7 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
     Widget screen;
     switch (index) {
       case 0:
-        screen = const HomeScreen();
+        screen = HomeScreen();
         break;
       case 1:
         screen = const DiaryScreen();

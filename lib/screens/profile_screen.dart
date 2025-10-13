@@ -1,7 +1,10 @@
 // lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ocean_pet/services/AuthService.dart';
 import './custom_bottom_nav.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,9 +16,72 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String userName = 'Chủ của Mochi';
   String userEmail = 'mochi@oceanpet.com';
+  String? avatarUrl;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // Lấy thông tin từ Firebase Auth nếu user đăng nhập bằng Google
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+
+      if (firebaseUser != null) {
+        // User đăng nhập qua Firebase (Google/Facebook)
+        setState(() {
+          userName = firebaseUser.displayName ?? 'Người dùng';
+          userEmail = firebaseUser.email ?? '';
+          avatarUrl = firebaseUser.photoURL;
+          isLoading = false;
+        });
+      } else {
+        // User đăng nhập qua email/password, lấy từ MySQL
+        final result = await AuthService.getUserInfo();
+
+        if (result['success']) {
+          final user = result['user'];
+          setState(() {
+            userName = user['name'] ?? 'Người dùng';
+            userEmail = user['email'] ?? '';
+            avatarUrl = user['avatarUrl'];
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Lỗi load user info: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF8E97FD),
+          ),
+        ),
+        bottomNavigationBar: const CustomBottomNav(currentIndex: 3),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -24,28 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(18.0),
             child: Column(
               children: [
-                // Header
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Cá Nhân',
-                        style: GoogleFonts.aclonica(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Image.asset(
-                        'lib/res/drawables/setting/LOGO.png',
-                        width: 48,
-                        height: 48,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+                // ...existing code...
 
                 // Profile Avatar and Info
                 Container(
@@ -68,11 +113,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.white,
-                            child: Icon(
-                              Icons.person,
-                              size: 60,
-                              color: const Color(0xFF8E97FD),
-                            ),
+                            backgroundImage:
+                                avatarUrl != null && avatarUrl!.isNotEmpty
+                                    ? NetworkImage(avatarUrl!)
+                                    : null,
+                            child: avatarUrl == null || avatarUrl!.isEmpty
+                                ? Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: const Color(0xFF8E97FD),
+                                  )
+                                : null,
                           ),
                           Positioned(
                             bottom: 0,
@@ -365,9 +416,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                // TODO: Implement logout logic
+
+                // Show loading
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Đang đăng xuất...'),
+                      ],
+                    ),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+
+                // Đăng xuất
+                await AuthService.logout();
+
+                // Navigate to login screen (không phụ thuộc route name)
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                        builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
               },
               child: Text(
                 'Đăng xuất',
@@ -430,18 +514,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  userName = nameController.text;
-                  userEmail = emailController.text;
-                });
+              onPressed: () async {
+                final newName = nameController.text.trim();
+                final newEmail = emailController.text.trim();
+
+                if (newName.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Tên không được để trống'),
+                      backgroundColor: Color(0xFFEF5350),
+                    ),
+                  );
+                  return;
+                }
+
                 Navigator.pop(context);
+
+                // Show loading
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Đã cập nhật thông tin'),
-                    backgroundColor: Color(0xFF66BB6A),
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Đang cập nhật...'),
+                      ],
+                    ),
+                    duration: Duration(seconds: 2),
                   ),
                 );
+
+                // Cập nhật thông tin
+                final result =
+                    await AuthService.updateUserInfo(newName, avatarUrl);
+
+                if (result['success']) {
+                  setState(() {
+                    userName = newName;
+                    userEmail = newEmail;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ Đã cập nhật thông tin'),
+                      backgroundColor: Color(0xFF66BB6A),
+                    ),
+                  );
+
+                  // Reload thông tin
+                  _loadUserInfo();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Cập nhật thất bại'),
+                      backgroundColor: Color(0xFFEF5350),
+                    ),
+                  );
+                }
               },
               child: Text('Lưu',
                   style: GoogleFonts.afacad(

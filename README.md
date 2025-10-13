@@ -1,6 +1,39 @@
-# ocean_pet
+# Ocean Pet App
 
-A new Flutter project.
+A Flutter pet care management application with Node.js backend and MySQL database.
+
+## 🆕 Latest Features
+
+### ✅ Email OTP Verification (NEW!)
+- User registration with email/password
+- 6-digit OTP sent via email
+- Email verification before login
+- OTP expires after 10 minutes
+- Resend OTP functionality
+
+**📖 Quick Start:** See `OTP_QUICKSTART.md`  
+**📖 Detailed Guide:** See `OTP_FEATURE_GUIDE.md`  
+**📖 Email Setup:** See `EMAIL_OTP_SETUP.md`
+
+---
+
+## Features
+
+### Authentication
+- Email/Password registration & login
+- Google Sign-In (Firebase)
+- Facebook Login
+- Email OTP verification
+- JWT token-based authentication
+
+### Backend (Node.js + Express)
+- RESTful API
+- MySQL database
+- Email sending (nodemailer)
+- OAuth integration
+- Password hashing (bcrypt)
+
+---
 
 ## Getting Started
 

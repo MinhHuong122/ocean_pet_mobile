@@ -4,6 +4,7 @@ import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/screens/welcome_screen.dart';
 import 'package:ocean_pet/screens/login_screen.dart';
+import 'package:ocean_pet/screens/otp_verification_screen.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 
@@ -167,8 +168,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (result['success']) {
         if (mounted) {
+          // Chuyển sang màn hình OTP verification
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+            MaterialPageRoute(
+              builder: (context) => OTPVerificationScreen(
+                email: _emailController.text.trim(),
+              ),
+            ),
           );
         }
       } else {

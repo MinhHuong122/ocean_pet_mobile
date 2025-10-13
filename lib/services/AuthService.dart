@@ -7,7 +7,8 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
-  static const String _defaultBaseUrl = 'http://localhost:3000'; // URL mặc định
+  static const String _defaultBaseUrl =
+      'http://10.0.2.2:3000'; // Đổi sang 10.0.2.2 cho Android emulator
   static String _baseUrl = _defaultBaseUrl; // Có thể thay đổi qua setBaseUrl
   static const int _timeoutDuration = 10; // Timeout sau 10 giây
 
@@ -40,6 +41,88 @@ class AuthService {
   static Future<String?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_id');
+  }
+
+  // Lấy thông tin user từ backend
+  static Future<Map<String, dynamic>> getUserInfo() async {
+    try {
+      final userId = await getUserId();
+      if (userId == null) {
+        return {
+          'success': false,
+          'message': 'Chưa đăng nhập',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/user/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(Duration(seconds: _timeoutDuration));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'user': data['user'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Không thể lấy thông tin',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối: $e',
+      };
+    }
+  }
+
+  // Cập nhật thông tin user
+  static Future<Map<String, dynamic>> updateUserInfo(
+      String name, String? avatarUrl) async {
+    try {
+      final userId = await getUserId();
+      if (userId == null) {
+        return {
+          'success': false,
+          'message': 'Chưa đăng nhập',
+        };
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/user/$userId'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'name': name,
+              'avatarUrl': avatarUrl,
+            }),
+          )
+          .timeout(Duration(seconds: _timeoutDuration));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Cập nhật thành công',
+          'user': data['user'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Cập nhật thất bại',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối: $e',
+      };
+    }
   }
 
   // Đăng xuất
@@ -162,8 +245,123 @@ class AuthService {
   // Đăng ký bằng email/password
   static Future<Map<String, dynamic>> register(
       String name, String email, String password) async {
-    return _sendAuthRequest(
-        'register', {'name': name, 'email': email, 'password': password});
+    const int maxRetries = 2;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse('$_baseUrl/register'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(
+                  {'name': name, 'email': email, 'password': password}),
+            )
+            .timeout(Duration(seconds: _timeoutDuration));
+
+        final data = jsonDecode(response.body);
+
+        if (response.statusCode == 201) {
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Đăng ký thành công',
+            'userId': data['userId'],
+            'email': data['email'],
+          };
+        } else {
+          return {
+            'success': false,
+            'message': data['error'] ?? 'Đăng ký thất bại',
+          };
+        }
+      } catch (e) {
+        if (attempt == maxRetries) {
+          return {
+            'success': false,
+            'message': 'Lỗi kết nối sau $maxRetries lần thử: $e',
+          };
+        }
+        await Future.delayed(Duration(seconds: 1));
+      }
+    }
+    return {'success': false, 'message': 'Lỗi kết nối không xác định'};
+  }
+
+  // Xác thực OTP
+  static Future<Map<String, dynamic>> verifyOTP(
+      String email, String otp) async {
+    const int maxRetries = 2;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse('$_baseUrl/verify-otp'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'email': email, 'otp': otp}),
+            )
+            .timeout(Duration(seconds: _timeoutDuration));
+
+        final data = jsonDecode(response.body);
+
+        if (response.statusCode == 200) {
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Xác thực thành công',
+          };
+        } else {
+          return {
+            'success': false,
+            'message': data['error'] ?? 'Xác thực thất bại',
+          };
+        }
+      } catch (e) {
+        if (attempt == maxRetries) {
+          return {
+            'success': false,
+            'message': 'Lỗi kết nối sau $maxRetries lần thử: $e',
+          };
+        }
+        await Future.delayed(Duration(seconds: 1));
+      }
+    }
+    return {'success': false, 'message': 'Lỗi kết nối không xác định'};
+  }
+
+  // Gửi lại OTP
+  static Future<Map<String, dynamic>> resendOTP(String email) async {
+    const int maxRetries = 2;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse('$_baseUrl/resend-otp'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'email': email}),
+            )
+            .timeout(Duration(seconds: _timeoutDuration));
+
+        final data = jsonDecode(response.body);
+
+        if (response.statusCode == 200) {
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Gửi lại OTP thành công',
+          };
+        } else {
+          return {
+            'success': false,
+            'message': data['error'] ?? 'Gửi lại OTP thất bại',
+          };
+        }
+      } catch (e) {
+        if (attempt == maxRetries) {
+          return {
+            'success': false,
+            'message': 'Lỗi kết nối sau $maxRetries lần thử: $e',
+          };
+        }
+        await Future.delayed(Duration(seconds: 1));
+      }
+    }
+    return {'success': false, 'message': 'Lỗi kết nối không xác định'};
   }
 
   // Đăng nhập với Google (Firebase Authentication)

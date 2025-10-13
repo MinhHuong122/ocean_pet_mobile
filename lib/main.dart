@@ -5,6 +5,24 @@ import 'package:ocean_pet/screens/login_screen.dart';
 import 'package:ocean_pet/screens/home_screen.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:http/http.dart' as http;
+
+// Hàm kiểm tra backend đã chạy chưa
+Future<bool> checkBackendConnection() async {
+  try {
+    final response = await http
+        .get(Uri.parse(
+            'http://10.0.2.2:3000')) // Sử dụng 10.0.2.2 cho Android emulator
+        .timeout(Duration(seconds: 3));
+    print('✅ Backend đã kết nối thành công!');
+    return true;
+  } catch (e) {
+    print(
+        '⚠️ Cảnh báo: Backend chưa chạy. Một số tính năng có thể không hoạt động.');
+    print('💡 Hãy chạy: node lib/backend/server.js');
+    return false;
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +37,9 @@ void main() async {
       storageBucket: 'oceanpet-7055d.firebasestorage.app',
     ),
   );
+
+  // Kiểm tra kết nối backend tự động
+  await checkBackendConnection();
 
   runApp(MyApp());
 }
@@ -107,6 +128,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
       return const OnboardingScreen();
     }
 
-    return _isLoggedIn ? const HomeScreen() : const LoginScreen();
+    return _isLoggedIn ? HomeScreen() : const LoginScreen();
   }
 }

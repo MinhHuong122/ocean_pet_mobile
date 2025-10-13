@@ -43,45 +43,7 @@ class _CareScreenState extends State<CareScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Chăm Sóc',
-                        style: GoogleFonts.aclonica(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Image.asset(
-                        'lib/res/drawables/setting/LOGO.png',
-                        width: 48,
-                        height: 48,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Chăm sóc thú cưng',
-                  style: GoogleFonts.afacad(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF22223B),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tất cả dịch vụ chăm sóc cho bé yêu',
-                  style: GoogleFonts.afacad(
-                    fontSize: 16,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                // ...existing code...
 
                 // Pet Card
                 Container(

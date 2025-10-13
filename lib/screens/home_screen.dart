@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import './custom_bottom_nav.dart'; // Correct import for widgets directory
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  HomeScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
