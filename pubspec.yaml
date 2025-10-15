@@ -61,6 +61,7 @@ dependencies:
   google_sign_in: ^6.2.1
   # Facebook Auth
   flutter_facebook_auth: ^7.1.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

@@ -5,6 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import './custom_bottom_nav.dart';
 import 'login_screen.dart';
+import 'profile_detail_screen.dart';
+import 'pet_management_screen.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -213,13 +216,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Icons.person_outline,
                   'Thông tin cá nhân',
                   'Chỉnh sửa hồ sơ của bạn',
-                  () => _showEditProfileDialog(),
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileDetailScreen(
+                          userName: userName,
+                          userEmail: userEmail,
+                          avatarUrl: avatarUrl,
+                          onUpdate: (newName, newEmail, newAvatar) {
+                            setState(() {
+                              userName = newName;
+                              userEmail = newEmail;
+                              avatarUrl = newAvatar;
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 _buildMenuOption(
                   Icons.pets,
                   'Quản lý thú cưng',
                   'Thêm hoặc chỉnh sửa thông tin thú cưng',
-                  () => _showPetManagementDialog(),
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PetManagementScreen(),
+                      ),
+                    );
+                  },
                 ),
                 _buildMenuOption(
                   Icons.notifications_outlined,
@@ -392,15 +420,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Text(
             'Đăng xuất',
             style: GoogleFonts.afacad(
               fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
           ),
           content: Text(
             'Bạn có chắc chắn muốn đăng xuất?',
-            style: GoogleFonts.afacad(),
+            style: GoogleFonts.afacad(color: Colors.black),
           ),
           actions: [
             TextButton(
@@ -475,8 +505,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Text('Chỉnh sửa thông tin',
-              style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              style: GoogleFonts.afacad(
+                  fontWeight: FontWeight.bold, color: Colors.black)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -615,8 +647,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Text('Quản lý thú cưng',
-              style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              style: GoogleFonts.afacad(
+                  fontWeight: FontWeight.bold, color: Colors.black)),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView.builder(
@@ -751,7 +785,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showNotificationSettings() {
+  void _showNotificationSettings() async {
+    // Simplified notification settings without permission package
     bool dailyReminder = true;
     bool appointmentReminder = true;
     bool feedingReminder = true;
@@ -762,42 +797,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Cài đặt thông báo',
-                  style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.notifications_active,
+                      color: Color(0xFF8E97FD)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Cài đặt thông báo',
+                      style: GoogleFonts.afacad(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SwitchListTile(
-                    title:
-                        Text('Nhắc nhở hàng ngày', style: GoogleFonts.afacad()),
-                    subtitle: Text('Nhắc chăm sóc thú cưng mỗi ngày',
-                        style: GoogleFonts.afacad(fontSize: 12)),
+                  _buildSwitchTile(
+                    title: 'Nhắc nhở hàng ngày',
+                    subtitle: 'Nhắc chăm sóc thú cưng mỗi ngày',
                     value: dailyReminder,
-                    activeColor: Color(0xFF8E97FD),
                     onChanged: (value) {
                       setDialogState(() {
                         dailyReminder = value;
                       });
                     },
                   ),
-                  SwitchListTile(
-                    title: Text('Nhắc lịch hẹn', style: GoogleFonts.afacad()),
-                    subtitle: Text('Nhắc trước 1 ngày',
-                        style: GoogleFonts.afacad(fontSize: 12)),
+                  _buildSwitchTile(
+                    title: 'Nhắc lịch hẹn',
+                    subtitle: 'Nhắc trước 1 ngày',
                     value: appointmentReminder,
-                    activeColor: Color(0xFF8E97FD),
                     onChanged: (value) {
                       setDialogState(() {
                         appointmentReminder = value;
                       });
                     },
                   ),
-                  SwitchListTile(
-                    title: Text('Nhắc cho ăn', style: GoogleFonts.afacad()),
-                    subtitle: Text('Nhắc giờ cho ăn',
-                        style: GoogleFonts.afacad(fontSize: 12)),
+                  _buildSwitchTile(
+                    title: 'Nhắc cho ăn',
+                    subtitle: 'Nhắc giờ cho ăn',
                     value: feedingReminder,
-                    activeColor: Color(0xFF8E97FD),
                     onChanged: (value) {
                       setDialogState(() {
                         feedingReminder = value;
@@ -807,20 +853,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               actions: [
-                TextButton(
+                ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Đã lưu cài đặt thông báo'),
+                        content: Text('✅ Đã lưu cài đặt thông báo'),
                         backgroundColor: Color(0xFF66BB6A),
                       ),
                     );
                   },
-                  child: Text('Lưu',
-                      style: GoogleFonts.afacad(
-                          color: Color(0xFF8E97FD),
-                          fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E97FD),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Lưu',
+                    style: GoogleFonts.afacad(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -830,92 +885,219 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildSwitchTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF8E97FD).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SwitchListTile(
+        title:
+            Text(title, style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle, style: GoogleFonts.afacad(fontSize: 12)),
+        value: value,
+        activeColor: const Color(0xFF8E97FD),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
   void _showSecuritySettings() {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Thay đổi mật khẩu',
-              style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: currentPasswordController,
-                  decoration: InputDecoration(
-                    labelText: 'Mật khẩu hiện tại',
-                    labelStyle: GoogleFonts.afacad(),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: Icon(Icons.lock),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.lock, color: Color(0xFF8E97FD)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Thay đổi mật khẩu',
+                    style: GoogleFonts.afacad(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
-                  style: GoogleFonts.afacad(),
-                  obscureText: true,
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: 350,
+                  maxWidth: 420,
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: newPasswordController,
-                  decoration: InputDecoration(
-                    labelText: 'Mật khẩu mới',
-                    labelStyle: GoogleFonts.afacad(),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: Icon(Icons.lock_outline),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: currentPasswordController,
+                        decoration: InputDecoration(
+                          labelText: 'Mật khẩu hiện tại',
+                          labelStyle: GoogleFonts.afacad(),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(Icons.lock_outline,
+                              color: Color(0xFF8E97FD)),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscureCurrent
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Color(0xFF8E97FD),
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                obscureCurrent = !obscureCurrent;
+                              });
+                            },
+                          ),
+                        ),
+                        style: GoogleFonts.afacad(),
+                        obscureText: obscureCurrent,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: newPasswordController,
+                        decoration: InputDecoration(
+                          labelText: 'Mật khẩu mới',
+                          labelStyle: GoogleFonts.afacad(),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon:
+                              const Icon(Icons.lock, color: Color(0xFF8E97FD)),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscureNew
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Color(0xFF8E97FD),
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                obscureNew = !obscureNew;
+                              });
+                            },
+                          ),
+                        ),
+                        style: GoogleFonts.afacad(),
+                        obscureText: obscureNew,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: confirmPasswordController,
+                        decoration: InputDecoration(
+                          labelText: 'Xác nhận mật khẩu mới',
+                          labelStyle: GoogleFonts.afacad(),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(Icons.lock_clock,
+                              color: Color(0xFF8E97FD)),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscureConfirm
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Color(0xFF8E97FD),
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                obscureConfirm = !obscureConfirm;
+                              });
+                            },
+                          ),
+                        ),
+                        style: GoogleFonts.afacad(),
+                        obscureText: obscureConfirm,
+                      ),
+                    ],
                   ),
-                  style: GoogleFonts.afacad(),
-                  obscureText: true,
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: confirmPasswordController,
-                  decoration: InputDecoration(
-                    labelText: 'Xác nhận mật khẩu mới',
-                    labelStyle: GoogleFonts.afacad(),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: Icon(Icons.lock_outline),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Hủy',
+                      style: GoogleFonts.afacad(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (currentPasswordController.text.isEmpty ||
+                        newPasswordController.text.isEmpty ||
+                        confirmPasswordController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Vui lòng điền đầy đủ thông tin'),
+                          backgroundColor: Color(0xFFEF5350),
+                        ),
+                      );
+                      return;
+                    }
+                    if (newPasswordController.text !=
+                        confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Mật khẩu xác nhận không khớp'),
+                          backgroundColor: Color(0xFFEF5350),
+                        ),
+                      );
+                      return;
+                    }
+                    if (newPasswordController.text.length < 6) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Mật khẩu phải có ít nhất 6 ký tự'),
+                          backgroundColor: Color(0xFFEF5350),
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('✅ Đã thay đổi mật khẩu thành công'),
+                        backgroundColor: Color(0xFF66BB6A),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E97FD),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  style: GoogleFonts.afacad(),
-                  obscureText: true,
+                  child: Text(
+                    'Lưu',
+                    style: GoogleFonts.afacad(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                if (newPasswordController.text !=
-                    confirmPasswordController.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Mật khẩu xác nhận không khớp'),
-                      backgroundColor: Color(0xFFEF5350),
-                    ),
-                  );
-                  return;
-                }
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã thay đổi mật khẩu thành công'),
-                    backgroundColor: Color(0xFF66BB6A),
-                  ),
-                );
-              },
-              child: Text('Lưu',
-                  style: GoogleFonts.afacad(
-                      color: Color(0xFF8E97FD), fontWeight: FontWeight.bold)),
-            ),
-          ],
+            );
+          },
         );
       },
     );

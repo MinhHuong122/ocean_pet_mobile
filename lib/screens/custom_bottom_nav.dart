@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import './home_screen.dart';
 import './diary_screen.dart';
 import './care_screen.dart';
-import './profile_screen.dart';
+import './profile_screen.dart' as profile_screen;
 
 class CustomBottomNav extends StatefulWidget {
   final int currentIndex;
@@ -111,7 +111,7 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
         screen = const CareScreen();
         break;
       case 3:
-        screen = const ProfileScreen();
+        screen = const profile_screen.ProfileScreen();
         break;
       default:
         return;

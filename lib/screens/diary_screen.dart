@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import './custom_bottom_nav.dart';
 import './trash_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class DiaryDetailScreen extends StatefulWidget {
@@ -24,19 +25,38 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   final ImagePicker _picker = ImagePicker();
-  List<String> folders = ['Gia đình', 'Công việc', 'Du lịch', 'Cá nhân'];
+  List<String> folders = [];
+
+  bool _editingTitle = false;
+  bool _editingDescription = false;
+  late FocusNode _titleFocus;
+  late FocusNode _descFocus;
+
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.entry['title']);
     _descriptionController =
         TextEditingController(text: widget.entry['description']);
+    _titleFocus = FocusNode();
+    _descFocus = FocusNode();
+    _loadFoldersFromPrefs();
+  }
+
+  Future<void> _loadFoldersFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final petFolders = prefs.getStringList('selected_pets') ?? [];
+    setState(() {
+      folders = petFolders.isNotEmpty ? petFolders : ['Chưa chọn thú cưng'];
+    });
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _titleFocus.dispose();
+    _descFocus.dispose();
     super.dispose();
   }
 
@@ -157,7 +177,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     const Icon(Icons.delete,
                         color: Color(0xFFEF5350), size: 20),
                     const SizedBox(width: 12),
-                    Text('XÃ³a',
+                    Text('Xóa',
                         style:
                             GoogleFonts.afacad(color: const Color(0xFFEF5350))),
                   ],
@@ -223,59 +243,63 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            GestureDetector(
-              onDoubleTap: () {
-                // Cho phÃ©p edit title báº±ng double tap
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text('Chá»‰nh sá»­a tiÃªu Ä‘á»',
-                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-                    content: TextField(
-                      controller: _titleController,
-                      style: GoogleFonts.afacad(),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+            _editingTitle
+                ? TextField(
+                    controller: _titleController,
+                    focusNode: _titleFocus,
+                    style: GoogleFonts.afacad(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onSubmitted: (_) {
+                      setState(() {
+                        _editingTitle = false;
+                        _saveChanges();
+                      });
+                    },
+                    onEditingComplete: () {
+                      setState(() {
+                        _editingTitle = false;
+                        _saveChanges();
+                      });
+                    },
+                    autofocus: true,
+                    onTapOutside: (_) {
+                      setState(() {
+                        _editingTitle = false;
+                        _saveChanges();
+                      });
+                    },
+                  )
+                : GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _editingTitle = true;
+                        FocusScope.of(context).requestFocus(_titleFocus);
+                      });
+                    },
+                    child: Text(
+                      _titleController.text,
+                      style: GoogleFonts.afacad(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF22223B),
                       ),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Há»§y',
-                            style: GoogleFonts.afacad(color: Colors.grey)),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _saveChanges();
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: Text('LÆ°u',
-                            style: GoogleFonts.afacad(
-                                color: const Color(0xFF8E97FD))),
-                      ),
-                    ],
                   ),
-                );
-              },
-              child: Text(
-                _titleController.text,
-                style: GoogleFonts.afacad(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF22223B),
-                ),
-              ),
-            ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Icon(Icons.access_time, size: 16, color: Colors.grey[400]),
                 const SizedBox(width: 4),
                 Text(
-                  '${widget.entry['time']} â€¢ ${widget.entry['date']}',
+                  '${widget.entry['time']} • ${widget.entry['date']}',
                   style: GoogleFonts.afacad(
                     fontSize: 14,
                     color: Colors.grey[400],
@@ -284,52 +308,55 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            GestureDetector(
-              onDoubleTap: () {
-                // Cho phÃ©p edit description báº±ng double tap
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text('Chá»‰nh sá»­a mÃ´ táº£',
-                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-                    content: TextField(
-                      controller: _descriptionController,
-                      maxLines: 5,
-                      style: GoogleFonts.afacad(),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+            _editingDescription
+                ? TextField(
+                    controller: _descriptionController,
+                    focusNode: _descFocus,
+                    maxLines: 5,
+                    style: GoogleFonts.afacad(
+                      fontSize: 16,
+                      color: const Color(0xFF6B7280),
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onSubmitted: (_) {
+                      setState(() {
+                        _editingDescription = false;
+                        _saveChanges();
+                      });
+                    },
+                    onEditingComplete: () {
+                      setState(() {
+                        _editingDescription = false;
+                        _saveChanges();
+                      });
+                    },
+                    autofocus: true,
+                    onTapOutside: (_) {
+                      setState(() {
+                        _editingDescription = false;
+                        _saveChanges();
+                      });
+                    },
+                  )
+                : GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _editingDescription = true;
+                        FocusScope.of(context).requestFocus(_descFocus);
+                      });
+                    },
+                    child: Text(
+                      _descriptionController.text,
+                      style: GoogleFonts.afacad(
+                        fontSize: 16,
+                        color: const Color(0xFF6B7280),
                       ),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Há»§y',
-                            style: GoogleFonts.afacad(color: Colors.grey)),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _saveChanges();
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: Text('LÆ°u',
-                            style: GoogleFonts.afacad(
-                                color: const Color(0xFF8E97FD))),
-                      ),
-                    ],
                   ),
-                );
-              },
-              child: Text(
-                _descriptionController.text,
-                style: GoogleFonts.afacad(
-                  fontSize: 16,
-                  color: const Color(0xFF6B7280),
-                ),
-              ),
-            ),
             if (widget.entry['images'] != null &&
                 widget.entry['images'].isNotEmpty) ...[
               const SizedBox(height: 24),
@@ -357,17 +384,14 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
 
   void _showChangeTagDialog() {
-    final categories = [
-      'Ä‚n uá»‘ng',
-      'Sá»©c khá»e',
-      'Vui chÆ¡i',
-      'Táº¯m rá»­a'
-    ];
+    final categories = ['Ăn uống', 'Sức khỏe', 'Vui chơi', 'Tắm rửa'];
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Äá»•i tag',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        title: Text('Đổi nhãn',
+            style: GoogleFonts.afacad(
+                fontWeight: FontWeight.bold, color: Colors.black)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: categories.map((cat) {
@@ -412,8 +436,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Chá»n mÃ u ná»n',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        title: Text('Chọn màu nền',
+            style: GoogleFonts.afacad(
+                fontWeight: FontWeight.bold, color: Colors.black)),
         content: Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -447,13 +473,15 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Äáº·t máº­t kháº©u',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        title: Text('Đặt mật khẩu',
+            style: GoogleFonts.afacad(
+                fontWeight: FontWeight.bold, color: Colors.black)),
         content: TextField(
           controller: passwordController,
           obscureText: true,
           decoration: InputDecoration(
-            labelText: 'Máº­t kháº©u',
+            labelText: 'Mật khẩu',
             labelStyle: GoogleFonts.afacad(),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -461,7 +489,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Há»§y', style: GoogleFonts.afacad(color: Colors.grey)),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
@@ -472,10 +500,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               });
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('ÄÃ£ Ä‘áº·t máº­t kháº©u')),
+                const SnackBar(content: Text('Đã đặt mật khẩu')),
               );
             },
-            child: Text('LÆ°u',
+            child: Text('Lưu',
                 style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
           ),
         ],
@@ -487,8 +515,10 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('ThÃªm vÃ o thÆ° má»¥c',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        title: Text('Thêm vào thư mục',
+            style: GoogleFonts.afacad(
+                fontWeight: FontWeight.bold, color: Colors.black)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: folders.map((folder) {
@@ -502,8 +532,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 });
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('ÄÃ£ thÃªm vÃ o thÆ° má»¥c "$folder"')),
+                  SnackBar(content: Text('Đã thêm vào thư mục "$folder"')),
                 );
               },
             );
@@ -517,16 +546,16 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('XÃ³a hoáº¡t Ä‘á»™ng',
+        title: Text('Xóa hoạt động',
             style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: Text(
-          'Hoáº¡t Ä‘á»™ng sáº½ Ä‘Æ°á»£c chuyá»ƒn vÃ o thÃ¹ng rÃ¡c vÃ  lÆ°u trá»¯ trong 30 ngÃ y.',
+          'Hoạt động sẽ được chuyển vào thùng rác và lưu trữ trong 30 ngày.',
           style: GoogleFonts.afacad(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Há»§y', style: GoogleFonts.afacad(color: Colors.grey)),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
@@ -536,12 +565,12 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('ÄÃ£ chuyá»ƒn vÃ o thÃ¹ng rÃ¡c'),
+                  content: Text('Đã chuyển vào thùng rác'),
                   backgroundColor: Color(0xFFEF5350),
                 ),
               );
             },
-            child: Text('XÃ³a',
+            child: Text('Xóa',
                 style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
           ),
         ],
@@ -551,13 +580,13 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case 'Ä‚n uá»‘ng':
+      case 'Ăn uống':
         return Icons.restaurant;
-      case 'Sá»©c khá»e':
+      case 'Sức khỏe':
         return Icons.medical_services;
-      case 'Vui chÆ¡i':
+      case 'Vui chơi':
         return Icons.sports_soccer;
-      case 'Táº¯m rá»­a':
+      case 'Tắm rửa':
         return Icons.bathroom;
       default:
         return Icons.event_note;
@@ -566,13 +595,13 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
 
   Color _getCategoryColor(String category) {
     switch (category) {
-      case 'Ä‚n uá»‘ng':
+      case 'Ăn uống':
         return const Color(0xFFFFB74D);
-      case 'Sá»©c khá»e':
+      case 'Sức khỏe':
         return const Color(0xFFEF5350);
-      case 'Vui chÆ¡i':
+      case 'Vui chơi':
         return const Color(0xFF66BB6A);
-      case 'Táº¯m rá»­a':
+      case 'Tắm rửa':
         return const Color(0xFF64B5F6);
       default:
         return const Color(0xFF8E97FD);
@@ -587,73 +616,133 @@ class DiaryScreen extends StatefulWidget {
 }
 
 class _DiaryScreenState extends State<DiaryScreen> {
-  String selectedFilter = 'Táº¥t cáº£';
-  List<String> folders = [
-    'Gia Ä‘Ã¬nh',
-    'CÃ´ng viá»‡c',
-    'Du lá»‹ch',
-    'CÃ¡ nhÃ¢n'
-  ];
+  String selectedFilter = 'Tất cả';
+  // Update folders to represent pet types
+  List<String> folders = ['Mèo', 'Chó', 'Chuột', 'Chim', 'Cá', 'Thỏ', 'Rùa'];
   List<Map<String, dynamic>> trashedEntries = [];
   final List<String> filters = [
-    'Táº¥t cáº£',
-    'Ä‚n uá»‘ng',
-    'Sá»©c khá»e',
-    'Vui chÆ¡i',
-    'Táº¯m rá»­a'
+    'Tất cả',
+    'Ăn uống',
+    'Sức khỏe',
+    'Vui chơi',
+    'Tắm rửa'
   ];
+  String searchQuery = '';
+  bool isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> diaryEntries = [
     {
       'id': '1',
-      'title': 'Mochi Äƒn sÃ¡ng',
+      'title': 'Mochi ăn sáng',
       'time': '8:00 AM',
       'date': '17/09/2025',
-      'category': 'Ä‚n uá»‘ng',
-      'description': 'Mochi Ä‘Ã£ Äƒn 100g thá»©c Äƒn khÃ´ vÃ  uá»‘ng nÆ°á»›c',
+      'category': 'Ăn uống',
+      'description': 'Mochi đã ăn 100g thức ăn khô và uống nước',
       'icon': Icons.restaurant,
       'color': Color(0xFFFFB74D),
     },
     {
       'id': '2',
-      'title': 'Táº¯m cho Mochi',
+      'title': 'Tắm cho Mochi',
       'time': '2:00 PM',
       'date': '17/09/2025',
-      'category': 'Táº¯m rá»­a',
-      'description': 'Táº¯m vÃ  cháº£i lÃ´ng cho Mochi',
+      'category': 'Tắm rửa',
+      'description': 'Tắm và chải lông cho Mochi',
       'icon': Icons.bathroom,
       'color': Color(0xFF64B5F6),
     },
     {
       'id': '3',
-      'title': 'KhÃ¡m sá»©c khá»e Ä‘á»‹nh ká»³',
+      'title': 'Khám sức khỏe định kỳ',
       'time': '10:00 AM',
       'date': '15/09/2025',
-      'category': 'Sá»©c khá»e',
-      'description': 'Kiá»ƒm tra sá»©c khá»e tá»•ng quÃ¡t táº¡i phÃ²ng khÃ¡m',
+      'category': 'Sức khỏe',
+      'description': 'Kiểm tra sức khỏe tổng quát tại phòng khám',
       'icon': Icons.medical_services,
       'color': Color(0xFFEF5350),
     },
     {
       'id': '4',
-      'title': 'ChÆ¡i Ä‘Ã¹a ngoÃ i trá»i',
+      'title': 'Chơi đùa ngoài trời',
       'time': '5:00 PM',
       'date': '14/09/2025',
-      'category': 'Vui chÆ¡i',
-      'description': 'Mochi chÆ¡i vá»›i bÃ³ng vÃ  cháº¡y nháº£y 30 phÃºt',
+      'category': 'Vui chơi',
+      'description': 'Mochi chơi với bóng và chạy nhảy 30 phút',
       'icon': Icons.sports_soccer,
       'color': Color(0xFF66BB6A),
     },
     {
       'id': '5',
-      'title': 'Uá»‘ng thuá»‘c dá»‹ á»©ng',
+      'title': 'Uống thuốc dị ứng',
       'time': '9:00 AM',
       'date': '13/09/2025',
-      'category': 'Sá»©c khá»e',
-      'description': 'Cho Mochi uá»‘ng thuá»‘c theo Ä‘Æ¡n bÃ¡c sÄ©',
+      'category': 'Sức khỏe',
+      'description': 'Cho Mochi uống thuốc theo đơn bác sĩ',
       'icon': Icons.medication,
       'color': Color(0xFFEF5350),
     },
   ];
+
+  void _showCreateFolderDialog() {
+    final folderController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text('Tạo thú nuôi mới',
+              style: GoogleFonts.afacad(
+                  fontWeight: FontWeight.bold, color: Colors.black)),
+          content: TextField(
+            controller: folderController,
+            decoration: InputDecoration(
+              labelText: 'Tên thú nuôi',
+              labelStyle: GoogleFonts.afacad(),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              hintText: 'VD: Sóc, Nhím, ...',
+              hintStyle: GoogleFonts.afacad(color: Colors.grey),
+            ),
+            style: GoogleFonts.afacad(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                final newFolder = folderController.text.trim();
+                if (newFolder.isNotEmpty && !folders.contains(newFolder)) {
+                  setState(() {
+                    folders.add(newFolder);
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã thêm thú nuôi mới'),
+                      backgroundColor: Color(0xFF66BB6A),
+                    ),
+                  );
+                } else if (folders.contains(newFolder)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Thú nuôi đã tồn tại'),
+                      backgroundColor: Color(0xFFEF5350),
+                    ),
+                  );
+                }
+              },
+              child: Text('Tạo',
+                  style: GoogleFonts.afacad(
+                      color: Color(0xFF8E97FD), fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _moveToTrash(String entryId) {
     final entryIndex = diaryEntries.indexWhere((e) => e['id'] == entryId);
     if (entryIndex != -1) {
@@ -677,11 +766,20 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredEntries = selectedFilter == 'Táº¥t cáº£'
+    // Apply filter and search
+    List<Map<String, dynamic>> filteredEntries = selectedFilter == 'Tất cả'
         ? diaryEntries
         : diaryEntries
             .where((entry) => entry['category'] == selectedFilter)
             .toList();
+    if (searchQuery.isNotEmpty) {
+      filteredEntries = filteredEntries.where((entry) {
+        final title = (entry['title'] ?? '').toString().toLowerCase();
+        final desc = (entry['description'] ?? '').toString().toLowerCase();
+        final query = searchQuery.toLowerCase();
+        return title.contains(query) || desc.contains(query);
+      }).toList();
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -693,20 +791,73 @@ class _DiaryScreenState extends State<DiaryScreen> {
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        title: Text(
-          'Nhật ký gần đây',
-          style: GoogleFonts.afacad(
-            color: const Color(0xFF22223B),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        title: isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: GoogleFonts.afacad(
+                  color: const Color(0xFF22223B),
+                  fontSize: 16,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Tìm kiếm hoạt động...',
+                  hintStyle: GoogleFonts.afacad(
+                    color: Colors.grey[400],
+                    fontSize: 16,
+                  ),
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                  });
+                },
+                onSubmitted: (value) {
+                  setState(() {
+                    searchQuery = value;
+                  });
+                },
+              )
+            : Text(
+                'Nhật ký gần đây',
+                style: GoogleFonts.afacad(
+                  color: const Color(0xFF22223B),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF22223B)),
-            onPressed: () {},
+            icon: Icon(
+              isSearching ? Icons.check : Icons.search,
+              color: const Color(0xFF22223B),
+            ),
+            onPressed: () {
+              setState(() {
+                if (isSearching) {
+                  // Confirm search
+                  isSearching = false;
+                } else {
+                  // Start searching
+                  isSearching = true;
+                  searchQuery = '';
+                  _searchController.clear();
+                }
+              });
+            },
           ),
+          if (isSearching)
+            IconButton(
+              icon: const Icon(Icons.close, color: Color(0xFF22223B)),
+              onPressed: () {
+                setState(() {
+                  isSearching = false;
+                  searchQuery = '';
+                  _searchController.clear();
+                });
+              },
+            ),
         ],
       ),
       body: SafeArea(
@@ -824,7 +975,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
-      width: MediaQuery.of(context).size.width / 2,
+      width: MediaQuery.of(context).size.width * 0.6,
       child: Container(
         color: Colors.white,
         child: ListView(
@@ -853,7 +1004,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ListTile(
               leading:
                   const Icon(Icons.create_new_folder, color: Color(0xFF8E97FD)),
-              title: Text('Tạo thư mục mới',
+              title: Text('Tạo thú nuôi mới',
                   style: GoogleFonts.afacad(fontSize: 14)),
               onTap: () {
                 Navigator.pop(context);
@@ -891,8 +1042,6 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       trashedEntries: trashedEntries,
                       onRestore: (entry) {
                         setState(() {
-                          trashedEntries.remove(entry);
-                          entry.remove('deletedAt');
                           diaryEntries.add(entry);
                         });
                       },
@@ -910,7 +1059,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'Thư mục',
+                'Thú nuôi',
                 style: GoogleFonts.afacad(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -920,60 +1069,17 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
             ...folders.map((folder) {
               return ListTile(
-                leading: const Icon(Icons.folder,
-                    color: Color(0xFF8E97FD), size: 20),
+                leading:
+                    const Icon(Icons.pets, color: Color(0xFF8E97FD), size: 20),
                 title: Text(folder, style: GoogleFonts.afacad(fontSize: 14)),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Lọc theo thư mục
+                  // TODO: Lọc theo thú nuôi
                 },
               );
             }).toList(),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showCreateFolderDialog() {
-    final folderController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Táº¡o thÆ° má»¥c má»›i',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: folderController,
-          decoration: InputDecoration(
-            labelText: 'TÃªn thÆ° má»¥c',
-            labelStyle: GoogleFonts.afacad(),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          style: GoogleFonts.afacad(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Há»§y', style: GoogleFonts.afacad(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              if (folderController.text.isNotEmpty) {
-                setState(() {
-                  folders.add(folderController.text);
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text(
-                          'ÄÃ£ táº¡o thÆ° má»¥c "${folderController.text}"')),
-                );
-              }
-            },
-            child: Text('Táº¡o',
-                style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
-          ),
-        ],
       ),
     );
   }
@@ -1065,7 +1171,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${entry['time']} â€¢ ${entry['date']}',
+                  '${entry['time']} • ${entry['date']}',
                   style: GoogleFonts.afacad(
                     fontSize: 12,
                     color: Colors.grey[400],
@@ -1125,11 +1231,13 @@ class _DiaryScreenState extends State<DiaryScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Text('Xóa hoạt động',
-              style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              style: GoogleFonts.afacad(
+                  fontWeight: FontWeight.bold, color: Colors.black)),
           content: Text(
             'Bạn có chắc chắn muốn xóa "${entry['title']}"?',
-            style: GoogleFonts.afacad(),
+            style: GoogleFonts.afacad(color: Colors.black),
           ),
           actions: [
             TextButton(
@@ -1170,7 +1278,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Chá»‰nh sá»­a hoáº¡t Ä‘á»™ng',
+              title: Text('Chỉnh sửa hoạt động',
                   style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
@@ -1179,7 +1287,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     TextField(
                       controller: titleController,
                       decoration: InputDecoration(
-                        labelText: 'TiÃªu Ä‘á»',
+                        labelText: 'Tiêu đề',
                         labelStyle: GoogleFonts.afacad(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
@@ -1191,7 +1299,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       controller: descriptionController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        labelText: 'MÃ´ táº£',
+                        labelText: 'Mô tả',
                         labelStyle: GoogleFonts.afacad(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
@@ -1202,7 +1310,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     DropdownButtonFormField<String>(
                       value: selectedCategory,
                       decoration: InputDecoration(
-                        labelText: 'Danh má»¥c',
+                        labelText: 'Danh mục',
                         labelStyle: GoogleFonts.afacad(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
@@ -1225,7 +1333,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Há»§y',
+                  child: Text('Hủy',
                       style: GoogleFonts.afacad(color: Colors.grey)),
                 ),
                 TextButton(
@@ -1240,12 +1348,12 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('ÄÃ£ cáº­p nháº­t hoáº¡t Ä‘á»™ng'),
+                        content: Text('Đã cập nhật hoạt động'),
                         backgroundColor: Color(0xFF66BB6A),
                       ),
                     );
                   },
-                  child: Text('LÆ°u',
+                  child: Text('Lưu',
                       style: GoogleFonts.afacad(
                           color: Color(0xFF8E97FD),
                           fontWeight: FontWeight.bold)),
@@ -1261,14 +1369,14 @@ class _DiaryScreenState extends State<DiaryScreen> {
   void _showAddEntryDialog() {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
-    String selectedCategory = 'Ä‚n uá»‘ng';
+    String selectedCategory = 'Ăn uống';
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('ThÃªm hoáº¡t Ä‘á»™ng má»›i',
+              title: Text('Thêm hoạt động mới',
                   style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
@@ -1277,11 +1385,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     TextField(
                       controller: titleController,
                       decoration: InputDecoration(
-                        labelText: 'TiÃªu Ä‘á»',
+                        labelText: 'Tiêu đề',
                         labelStyle: GoogleFonts.afacad(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
-                        hintText: 'VD: Mochi Äƒn sÃ¡ng',
+                        hintText: 'VD: Mochi ăn sáng',
                         hintStyle: GoogleFonts.afacad(color: Colors.grey),
                       ),
                       style: GoogleFonts.afacad(),
@@ -1291,11 +1399,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       controller: descriptionController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        labelText: 'MÃ´ táº£',
+                        labelText: 'Mô tả',
                         labelStyle: GoogleFonts.afacad(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
-                        hintText: 'MÃ´ táº£ chi tiáº¿t hoáº¡t Ä‘á»™ng...',
+                        hintText: 'Mô tả chi tiết hoạt động...',
                         hintStyle: GoogleFonts.afacad(color: Colors.grey),
                       ),
                       style: GoogleFonts.afacad(),
@@ -1304,7 +1412,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     DropdownButtonFormField<String>(
                       value: selectedCategory,
                       decoration: InputDecoration(
-                        labelText: 'Danh má»¥c',
+                        labelText: 'Danh mục',
                         labelStyle: GoogleFonts.afacad(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
@@ -1327,7 +1435,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Há»§y',
+                  child: Text('Hủy',
                       style: GoogleFonts.afacad(color: Colors.grey)),
                 ),
                 TextButton(
@@ -1336,8 +1444,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                         descriptionController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content:
-                              Text('Vui lÃ²ng Ä‘iá»n Ä‘áº§y Ä‘á»§ thÃ´ng tin'),
+                          content: Text('Vui lòng điền đầy đủ thông tin'),
                           backgroundColor: Color(0xFFEF5350),
                         ),
                       );
@@ -1359,12 +1466,12 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('ÄÃ£ thÃªm hoáº¡t Ä‘á»™ng má»›i'),
+                        content: Text('Đã thêm hoạt động mới'),
                         backgroundColor: Color(0xFF66BB6A),
                       ),
                     );
                   },
-                  child: Text('ThÃªm',
+                  child: Text('Thêm',
                       style: GoogleFonts.afacad(
                           color: Color(0xFF8E97FD),
                           fontWeight: FontWeight.bold)),
@@ -1379,13 +1486,13 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case 'Ä‚n uá»‘ng':
+      case 'Ăn uống':
         return Icons.restaurant;
-      case 'Sá»©c khá»e':
+      case 'Sức khỏe':
         return Icons.medical_services;
-      case 'Vui chÆ¡i':
+      case 'Vui chơi':
         return Icons.sports_soccer;
-      case 'Táº¯m rá»­a':
+      case 'Tắm rửa':
         return Icons.bathroom;
       default:
         return Icons.event_note;
@@ -1394,13 +1501,13 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
   Color _getCategoryColor(String category) {
     switch (category) {
-      case 'Ä‚n uá»‘ng':
+      case 'Ăn uống':
         return const Color(0xFFFFB74D);
-      case 'Sá»©c khá»e':
+      case 'Sức khỏe':
         return const Color(0xFFEF5350);
-      case 'Vui chÆ¡i':
+      case 'Vui chơi':
         return const Color(0xFF66BB6A);
-      case 'Táº¯m rá»­a':
+      case 'Tắm rửa':
         return const Color(0xFF64B5F6);
       default:
         return const Color(0xFF8E97FD);

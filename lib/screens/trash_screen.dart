@@ -172,11 +172,13 @@ class _TrashScreenState extends State<TrashScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Khôi phục hoạt động',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+            style: GoogleFonts.afacad(
+                fontWeight: FontWeight.bold, color: Colors.black)),
         content: Text(
           'Bạn có muốn khôi phục "${entry['title']}"?',
-          style: GoogleFonts.afacad(),
+          style: GoogleFonts.afacad(color: Colors.black),
         ),
         actions: [
           TextButton(
@@ -206,11 +208,13 @@ class _TrashScreenState extends State<TrashScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Xóa vĩnh viễn',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+            style: GoogleFonts.afacad(
+                fontWeight: FontWeight.bold, color: Colors.black)),
         content: Text(
           'Bạn có chắc chắn muốn xóa vĩnh viễn "${entry['title']}"? Hành động này không thể hoàn tác.',
-          style: GoogleFonts.afacad(),
+          style: GoogleFonts.afacad(color: Colors.black),
         ),
         actions: [
           TextButton(

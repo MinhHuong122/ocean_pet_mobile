@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ocean_pet/screens/home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChoosePetScreen extends StatefulWidget {
   @override
@@ -7,6 +8,13 @@ class ChoosePetScreen extends StatefulWidget {
 }
 
 class _ChoosePetScreenState extends State<ChoosePetScreen> {
+  Future<void> _saveSelectedPets() async {
+    final prefs = await SharedPreferences.getInstance();
+    final selectedPetNames =
+        selectedIndexes.map((i) => pets[i]['title'] as String).toList();
+    await prefs.setStringList('selected_pets', selectedPetNames);
+  }
+
   final Set<int> selectedIndexes = {};
   final List<Map<String, dynamic>> pets = [
     {
@@ -156,7 +164,8 @@ class _ChoosePetScreenState extends State<ChoosePetScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: selectedIndexes.isNotEmpty
-                    ? () {
+                    ? () async {
+                        await _saveSelectedPets();
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
                             builder: (context) => HomeScreen(),
