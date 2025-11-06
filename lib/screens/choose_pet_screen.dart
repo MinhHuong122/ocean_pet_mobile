@@ -174,18 +174,18 @@ class _ChoosePetScreenState extends State<ChoosePetScreen> {
                       }
                     : null,
                 style: ButtonStyle(
-                  padding: MaterialStateProperty.all(
+                  padding: WidgetStateProperty.all(
                       const EdgeInsets.symmetric(vertical: 16)),
-                  shape: MaterialStateProperty.all(RoundedRectangleBorder(
+                  shape: WidgetStateProperty.all(RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30))),
                   backgroundColor:
-                      MaterialStateProperty.resolveWith<Color>((states) {
-                    if (states.contains(MaterialState.disabled)) {
+                      WidgetStateProperty.resolveWith<Color>((states) {
+                    if (states.contains(WidgetState.disabled)) {
                       return Colors.grey.shade200;
                     }
                     return Color(0xFF8B5CF6);
                   }),
-                  elevation: MaterialStateProperty.all(0),
+                  elevation: WidgetStateProperty.all(0),
                 ),
                 child: Text(
                   'Xác nhận',

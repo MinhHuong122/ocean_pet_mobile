@@ -43,7 +43,7 @@ android {
 
     defaultConfig {
         applicationId "com.oceanpet.ocean_pet_new"
-        minSdkVersion 21
+        minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

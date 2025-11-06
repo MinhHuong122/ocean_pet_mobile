@@ -1308,7 +1308,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: selectedCategory,
+                      initialValue: selectedCategory,
                       decoration: InputDecoration(
                         labelText: 'Danh mục',
                         labelStyle: GoogleFonts.afacad(),
@@ -1410,7 +1410,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: selectedCategory,
+                      initialValue: selectedCategory,
                       decoration: InputDecoration(
                         labelText: 'Danh mục',
                         labelStyle: GoogleFonts.afacad(),

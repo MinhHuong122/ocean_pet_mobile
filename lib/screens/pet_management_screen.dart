@@ -352,7 +352,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: selectedGender,
+                            initialValue: selectedGender,
                             decoration: InputDecoration(
                               labelText: 'Giới tính',
                               labelStyle: GoogleFonts.afacad(),

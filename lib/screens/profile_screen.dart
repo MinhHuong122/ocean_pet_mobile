@@ -902,7 +902,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(title, style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle, style: GoogleFonts.afacad(fontSize: 12)),
         value: value,
-        activeColor: const Color(0xFF8E97FD),
+        activeThumbColor: const Color(0xFF8E97FD),
         onChanged: onChanged,
       ),
     );
