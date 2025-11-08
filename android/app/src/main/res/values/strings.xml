@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ocean Pet</string>
+    
+    <!-- Facebook Configuration -->
+    <string name="facebook_app_id">866945725764609</string>
+    <string name="facebook_client_token">bd1f75d944c86ffdeedc1bc4d8e6eaf0</string>
+</resources>

@@ -36,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (token != null) {
         Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
         String userId = decodedToken['id'].toString();
-        await AuthService.saveLoginState(token, userId);
+        await AuthService.saveLoginState(userId);
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const WelcomeScreen()),

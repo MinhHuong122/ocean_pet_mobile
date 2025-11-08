@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "989557975107",
+    "firebase_url": "https://oceanpet-7055d-default-rtdb.firebaseio.com",
     "project_id": "oceanpet-7055d",
     "storage_bucket": "oceanpet-7055d.firebasestorage.app"
   },
@@ -14,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "989557975107-ussp8vstsle8njt1lfc82qdtmit37d0e.apps.googleusercontent.com",
+          "client_id": "989557975107-9ou7d0vu8b7f1617vnn3civb4cbu3p4b.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.oceanpet.ocean_pet_new",
-            "certificate_hash": "825b4908fe299257431f794e2251d7a65804506d"
+            "certificate_hash": "b294d6c6c37552a0f1f5658709531b2e0fc7d0fa"
           }
         },
         {
@@ -37,6 +38,13 @@
             {
               "client_id": "989557975107-s13et1j5m8lt89p8sp3t8b3nds75pfmf.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "989557975107-n7usug5kcnbk1k9gmjuik40q6gvl7olc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.oceanPet"
+              }
             }
           ]
         }

@@ -75,29 +75,20 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   }
 
   Future<void> _verifyOTP() async {
-    final otp = _controllers.map((c) => c.text).join();
-    if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đủ 6 số'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
+    // Firebase Email Verification - User cần check email và click link
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final result = await AuthService.verifyOTP(widget.email, otp);
+      // Kiểm tra xem email đã được verify chưa
+      final isVerified = await AuthService.isEmailVerified();
 
-      if (result['success']) {
+      if (isVerified) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Xác thực thành công!'),
+              content: Text('✅ Email đã được xác thực thành công!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -114,9 +105,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Mã OTP không chính xác'),
-              backgroundColor: Colors.red,
+            const SnackBar(
+              content: Text('⚠️ Email chưa được xác thực. Vui lòng kiểm tra email và click vào link xác thực.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
             ),
           );
         }
@@ -147,38 +139,29 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     });
 
     try {
-      final result = await AuthService.resendOTP(widget.email);
-
-      if (result['success']) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Mã OTP mới đã được gửi đến email của bạn'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          _startTimer();
-          // Xóa các ô nhập
-          for (var controller in _controllers) {
-            controller.clear();
-          }
-          _focusNodes[0].requestFocus();
+      // Firebase: Gửi lại email verification
+      await AuthService.sendEmailVerification();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Đã gửi lại email xác thực. Vui lòng kiểm tra hộp thư của bạn.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        _startTimer();
+        // Xóa các ô nhập
+        for (var controller in _controllers) {
+          controller.clear();
         }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Không thể gửi lại mã OTP'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        _focusNodes[0].requestFocus();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Có lỗi xảy ra, vui lòng thử lại'),
+          SnackBar(
+            content: Text('Có lỗi xảy ra: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -244,7 +227,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
               // Subtitle
               Text(
-                'Chúng tôi đã gửi mã xác thực đến',
+                'Chúng tôi đã gửi link xác thực đến',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -266,64 +249,44 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
 
-              // OTP Input Fields
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(6, (index) {
-                  return SizedBox(
-                    width: 50,
-                    height: 60,
-                    child: TextFormField(
-                      controller: _controllers[index],
-                      focusNode: _focusNodes[index],
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      maxLength: 1,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        filled: true,
-                        fillColor: const Color(0xFFF5F5F5),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF8B5CF6),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      onChanged: (value) {
-                        if (value.isNotEmpty && index < 5) {
-                          _focusNodes[index + 1].requestFocus();
-                        } else if (value.isEmpty && index > 0) {
-                          _focusNodes[index - 1].requestFocus();
-                        }
-
-                        // Auto verify when all fields are filled
-                        if (index == 5 && value.isNotEmpty) {
-                          final allFilled = _controllers.every(
-                            (controller) => controller.text.isNotEmpty,
-                          );
-                          if (allFilled) {
-                            _verifyOTP();
-                          }
-                        }
-                      },
+              // Instructions
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: const Color(0xFF8B5CF6),
+                      size: 32,
                     ),
-                  );
-                }),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Vui lòng kiểm tra email và click vào link xác thực.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontFamily: R.font.sfpro,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sau khi xác thực, quay lại đây và nhấn nút "Kiểm tra xác thực".',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontFamily: R.font.sfpro,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 24),
@@ -365,7 +328,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           ),
                         )
                       : Text(
-                          'Xác thực',
+                          'Kiểm tra xác thực',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

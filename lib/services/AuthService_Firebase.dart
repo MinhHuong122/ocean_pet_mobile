@@ -423,19 +423,13 @@ class AuthService {
   /// Đăng nhập/Đăng ký với Google
   static Future<Map<String, dynamic>> loginWithGoogle() async {
     try {
-      print('🔵 [Google Sign-In] Bắt đầu đăng nhập...');
-      
       // Đăng xuất tài khoản cũ nếu có
       await _googleSignIn.signOut();
-      print('🔵 [Google Sign-In] Đã sign out tài khoản cũ');
 
       // Đăng nhập với Google
-      print('🔵 [Google Sign-In] Đang mở dialog chọn tài khoản...');
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      print('🔵 [Google Sign-In] Kết quả: ${googleUser?.email ?? "null"}');
 
       if (googleUser == null) {
-        print('❌ [Google Sign-In] User huỷ đăng nhập');
         return {
           'success': false,
           'message': 'Đăng nhập Google bị hủy',
@@ -443,46 +437,29 @@ class AuthService {
       }
 
       // Lấy thông tin xác thực
-      print('🔵 [Google Sign-In] Đang lấy authentication...');
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
-      print('🔵 [Google Sign-In] Access token: ${googleAuth.accessToken != null}');
-      print('🔵 [Google Sign-In] ID token: ${googleAuth.idToken != null}');
 
       // Tạo credential cho Firebase
-      print('🔵 [Google Sign-In] Tạo Firebase credential...');
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      print('🔵 [Google Sign-In] Credential đã tạo');
 
       // Đăng nhập vào Firebase
-      print('🔵 [Google Sign-In] Đăng nhập vào Firebase...');
       final UserCredential userCredential =
           await _auth.signInWithCredential(credential);
-      print('✅ [Google Sign-In] Firebase authentication thành công!');
 
       final user = userCredential.user;
       if (user != null) {
-        print('🔵 [Google Sign-In] User UID: ${user.uid}');
-        print('🔵 [Google Sign-In] User email: ${user.email}');
-        
         // Kiểm tra xem có profile trong Firestore chưa
-        print('🔵 [Google Sign-In] Kiểm tra profile trong Firestore...');
         final userData = await FirebaseService.getUser(user.uid);
         if (userData == null) {
-          print('🔵 [Google Sign-In] Tạo profile mới...');
           await _createUserProfile(user);
-          print('✅ [Google Sign-In] Đã tạo profile');
-        } else {
-          print('✅ [Google Sign-In] Profile đã tồn tại');
         }
 
         // Lưu trạng thái đăng nhập
-        print('🔵 [Google Sign-In] Lưu login state...');
         await saveLoginState(user.uid);
-        print('✅ [Google Sign-In] Hoàn tất!');
 
         return {
           'success': true,
@@ -495,21 +472,17 @@ class AuthService {
           },
         };
       } else {
-        print('❌ [Google Sign-In] User null sau khi signIn');
         return {
           'success': false,
           'message': 'Không thể lấy thông tin người dùng',
         };
       }
     } on FirebaseAuthException catch (e) {
-      print('❌ [Google Sign-In] FirebaseAuthException: ${e.code} - ${e.message}');
       return {
         'success': false,
         'message': 'Lỗi đăng nhập Google: ${e.message}',
       };
-    } catch (e, stackTrace) {
-      print('❌ [Google Sign-In] Exception: $e');
-      print('❌ [Google Sign-In] StackTrace: $stackTrace');
+    } catch (e) {
       return {
         'success': false,
         'message': 'Lỗi đăng nhập Google: $e',

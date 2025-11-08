@@ -5,12 +5,13 @@ import 'package:ocean_pet/screens/login_screen.dart';
 import 'package:ocean_pet/screens/home_screen.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:http/http.dart' as http;
 
-// Hàm kiểm tra backend đã chạy chưa
+// Hàm kiểm tra backend đã chạy chưa (không còn cần thiết với Firebase)
 Future<bool> checkBackendConnection() async {
   try {
-    final response = await http
+    await http
         .get(Uri.parse(
             'http://10.0.2.2:3000')) // Sử dụng 10.0.2.2 cho Android emulator
         .timeout(Duration(seconds: 3));
@@ -18,24 +19,15 @@ Future<bool> checkBackendConnection() async {
     return true;
   } catch (e) {
     print(
-        '⚠️ Cảnh báo: Backend chưa chạy. Một số tính năng có thể không hoạt động.');
-    print('💡 Hãy chạy: node lib/backend/server.js');
+        '⚠️ Firebase đang được sử dụng thay vì backend Node.js cục bộ.');
     return false;
   }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Firebase with explicit options
   await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: 'AIzaSyDEB4wkh1mxQM4ciNBtCJTk-XoTOy1bw2Q',
-      appId: '1:989557975107:android:2f72b00a1a382946860cf6',
-      messagingSenderId: '989557975107',
-      projectId: 'oceanpet-7055d',
-      storageBucket: 'oceanpet-7055d.firebasestorage.app',
-    ),
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
   // Kiểm tra kết nối backend tự động

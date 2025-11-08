@@ -7,7 +7,6 @@ import './custom_bottom_nav.dart';
 import 'login_screen.dart';
 import 'profile_detail_screen.dart';
 import 'pet_management_screen.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
