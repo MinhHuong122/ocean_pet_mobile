@@ -65,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['success']) {
         if (mounted) {
+          // Luôn chuyển về WelcomeScreen, logic kiểm tra pet sẽ ở đó
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const WelcomeScreen()),
           );

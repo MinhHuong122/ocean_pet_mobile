@@ -150,26 +150,95 @@ class AuthService {
 
   // ==================== EMAIL/PASSWORD AUTHENTICATION ====================
 
-  /// Đăng ký bằng email/password
+  /// Đăng ký bằng email/password - FIX TYPE CASTING ERROR
   static Future<Map<String, dynamic>> register(
       String name, String email, String password) async {
     try {
-      // Tạo user trong Firebase Auth
-      final UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      print('🔐 [Register] Starting registration for: $email');
+      
+      // Bước 1: Tạo tài khoản với proper error handling
+      User? user;
+      try {
+        final userCredential = await _auth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        user = userCredential.user;
+        print('✅ [Register] User created successfully: ${user?.uid}');
+      } on FirebaseAuthException catch (e) {
+        // Handle Firebase Auth specific errors
+        print('❌ [Register] FirebaseAuthException: ${e.code}');
+        String message = 'Đăng ký thất bại';
+        
+        switch (e.code) {
+          case 'email-already-in-use':
+            message = 'Email này đã được đăng ký. Vui lòng sử dụng email khác.';
+            break;
+          case 'weak-password':
+            message = 'Mật khẩu quá yếu (tối thiểu 6 ký tự).';
+            break;
+          case 'invalid-email':
+            message = 'Email không hợp lệ.';
+            break;
+          case 'operation-not-allowed':
+            message = 'Đăng ký email/password chưa được kích hoạt.';
+            break;
+        }
+        
+        return {
+          'success': false,
+          'message': message,
+        };
+      } catch (e) {
+        // Handle other errors including type casting
+        print('⚠️ [Register] Non-Firebase error: $e');
+        
+        // Check if user was actually created despite the error
+        await Future.delayed(const Duration(milliseconds: 500));
+        user = _auth.currentUser;
+        
+        if (user == null) {
+          print('❌ [Register] User creation truly failed');
+          return {
+            'success': false,
+            'message': 'Lỗi không xác định: $e',
+          };
+        }
+        
+        print('✅ [Register] User created despite error: ${user.uid}');
+      }
 
-      final user = userCredential.user;
-      if (user != null) {
-        // Cập nhật display name
+      // Bước 2: Verify user và cập nhật profile
+      if (user == null) {
+        print('❌ [Register] User is null after all attempts');
+        return {
+          'success': false,
+          'message': 'Đăng ký thất bại: Không thể tạo tài khoản',
+        };
+      }
+
+      print('👤 [Register] Updating user profile for: ${user.uid}');
+      
+      // Cập nhật display name với error handling
+      try {
         await user.updateDisplayName(name);
+        print('✅ [Register] Display name updated');
+      } catch (e) {
+        print('⚠️ [Register] Failed to update display name: $e');
+        // Continue anyway, not critical
+      }
 
-        // Gửi email xác thực
+      // Gửi email xác thực với error handling
+      try {
         await user.sendEmailVerification();
+        print('✅ [Register] Verification email sent');
+      } catch (e) {
+        print('⚠️ [Register] Failed to send verification email: $e');
+        // Continue anyway, user can resend later
+      }
 
-        // Tạo profile trong Firestore
+      // Tạo profile trong Firestore
+      try {
         await FirebaseService.createOrUpdateUser(
           uid: user.uid,
           name: name,
@@ -177,116 +246,141 @@ class AuthService {
           provider: 'email',
           isVerified: false,
         );
-
-        // Lưu trạng thái đăng nhập
-        await saveLoginState(user.uid);
-
-        return {
-          'success': true,
-          'message':
-              'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
-          'userId': user.uid,
-          'email': email,
-          'requiresEmailVerification': true,
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Đăng ký thất bại',
-        };
+        print('✅ [Register] Firestore profile created');
+      } catch (e) {
+        print('⚠️ [Register] Failed to create Firestore profile: $e');
+        // Continue anyway, can be created later
       }
-    } on FirebaseAuthException catch (e) {
-      String message = 'Đăng ký thất bại';
-      switch (e.code) {
-        case 'weak-password':
-          message = 'Mật khẩu quá yếu (tối thiểu 6 ký tự)';
-          break;
-        case 'email-already-in-use':
-          message = 'Email đã được sử dụng';
-          break;
-        case 'invalid-email':
-          message = 'Email không hợp lệ';
-          break;
-        case 'operation-not-allowed':
-          message = 'Đăng ký bị vô hiệu hóa';
-          break;
-      }
+
+      // Lưu trạng thái đăng nhập
+      await saveLoginState(user.uid);
+
+      print('✅ [Register] Registration complete for: $email');
+      
       return {
-        'success': false,
-        'message': message,
+        'success': true,
+        'message': 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',
+        'userId': user.uid,
+        'email': email,
+        'requiresEmailVerification': true,
       };
     } catch (e) {
+      // Final catch-all for any unexpected errors
+      print('❌ [Register] Unexpected error: $e');
       return {
         'success': false,
-        'message': 'Lỗi đăng ký: $e',
+        'message': 'Lỗi đăng ký: ${e.toString()}',
       };
     }
   }
 
-  /// Đăng nhập bằng email/password
+  /// Đăng nhập bằng email/password - FIX TYPE CASTING ERROR
   static Future<Map<String, dynamic>> login(
       String email, String password) async {
     try {
-      final UserCredential userCredential =
-          await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      final user = userCredential.user;
-      if (user != null) {
-        // Kiểm tra xem có profile trong Firestore chưa
-        final userData = await FirebaseService.getUser(user.uid);
-        if (userData == null) {
-          await _createUserProfile(user);
+      print('🔐 [Login] Starting login for: $email');
+      
+      User? user;
+      try {
+        final userCredential = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        user = userCredential.user;
+        print('✅ [Login] User authenticated: ${user?.uid}');
+      } on FirebaseAuthException catch (e) {
+        // Handle Firebase Auth specific errors
+        print('❌ [Login] FirebaseAuthException: ${e.code}');
+        String message = 'Đăng nhập thất bại';
+        
+        switch (e.code) {
+          case 'user-not-found':
+            message = 'Không tìm thấy tài khoản với email này';
+            break;
+          case 'wrong-password':
+            message = 'Mật khẩu không đúng';
+            break;
+          case 'invalid-email':
+            message = 'Email không hợp lệ';
+            break;
+          case 'user-disabled':
+            message = 'Tài khoản đã bị vô hiệu hóa';
+            break;
+          case 'too-many-requests':
+            message = 'Quá nhiều lần thử. Vui lòng thử lại sau';
+            break;
+          case 'invalid-credential':
+            message = 'Email hoặc mật khẩu không đúng';
+            break;
         }
-
-        // Lưu trạng thái đăng nhập
-        await saveLoginState(user.uid);
-
+        
         return {
-          'success': true,
-          'message': 'Đăng nhập thành công',
-          'user': {
-            'id': user.uid,
-            'email': user.email,
-            'name': user.displayName,
-            'emailVerified': user.emailVerified,
-          },
+          'success': false,
+          'message': message,
         };
-      } else {
+      } catch (e) {
+        // Handle other errors including type casting
+        print('⚠️ [Login] Non-Firebase error: $e');
+        
+        // Check if user was actually authenticated despite the error
+        await Future.delayed(const Duration(milliseconds: 500));
+        user = _auth.currentUser;
+        
+        if (user == null) {
+          print('❌ [Login] Authentication truly failed');
+          return {
+            'success': false,
+            'message': 'Lỗi không xác định: $e',
+          };
+        }
+        
+        print('✅ [Login] User authenticated despite error: ${user.uid}');
+      }
+
+      // Verify user exists
+      if (user == null) {
+        print('❌ [Login] User is null after all attempts');
         return {
           'success': false,
           'message': 'Đăng nhập thất bại',
         };
       }
-    } on FirebaseAuthException catch (e) {
-      String message = 'Đăng nhập thất bại';
-      switch (e.code) {
-        case 'user-not-found':
-          message = 'Không tìm thấy tài khoản';
-          break;
-        case 'wrong-password':
-          message = 'Mật khẩu không đúng';
-          break;
-        case 'invalid-email':
-          message = 'Email không hợp lệ';
-          break;
-        case 'user-disabled':
-          message = 'Tài khoản đã bị vô hiệu hóa';
-          break;
-        case 'too-many-requests':
-          message = 'Quá nhiều lần thử. Vui lòng thử lại sau';
-          break;
+
+      print('👤 [Login] Checking user profile: ${user.uid}');
+      
+      // Kiểm tra và tạo profile trong Firestore nếu chưa có
+      try {
+        final userData = await FirebaseService.getUser(user.uid);
+        if (userData == null) {
+          print('📝 [Login] Creating Firestore profile');
+          await _createUserProfile(user);
+        }
+      } catch (e) {
+        print('⚠️ [Login] Failed to check/create Firestore profile: $e');
+        // Continue anyway, not critical for login
       }
+
+      // Lưu trạng thái đăng nhập
+      await saveLoginState(user.uid);
+
+      print('✅ [Login] Login complete for: $email');
+
       return {
-        'success': false,
-        'message': message,
+        'success': true,
+        'message': 'Đăng nhập thành công',
+        'user': {
+          'id': user.uid,
+          'email': user.email,
+          'name': user.displayName,
+          'emailVerified': user.emailVerified,
+        },
       };
     } catch (e) {
+      // Final catch-all for any unexpected errors
+      print('❌ [Login] Unexpected error: $e');
       return {
         'success': false,
-        'message': 'Lỗi đăng nhập: $e',
+        'message': 'Lỗi đăng nhập: ${e.toString()}',
       };
     }
   }
@@ -459,47 +553,88 @@ class AuthService {
 
       // Đăng nhập vào Firebase
       print('🔵 [Google Sign-In] Đăng nhập vào Firebase...');
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
-      print('✅ [Google Sign-In] Firebase authentication thành công!');
+      
+      try {
+        final userCredential = await _auth.signInWithCredential(credential);
+        print('✅ [Google Sign-In] Firebase authentication thành công!');
 
-      final user = userCredential.user;
-      if (user != null) {
-        print('🔵 [Google Sign-In] User UID: ${user.uid}');
-        print('🔵 [Google Sign-In] User email: ${user.email}');
-        
-        // Kiểm tra xem có profile trong Firestore chưa
-        print('🔵 [Google Sign-In] Kiểm tra profile trong Firestore...');
-        final userData = await FirebaseService.getUser(user.uid);
-        if (userData == null) {
-          print('🔵 [Google Sign-In] Tạo profile mới...');
-          await _createUserProfile(user);
-          print('✅ [Google Sign-In] Đã tạo profile');
+        final user = userCredential.user;
+        if (user != null) {
+          print('🔵 [Google Sign-In] User UID: ${user.uid}');
+          print('🔵 [Google Sign-In] User email: ${user.email}');
+          
+          // Kiểm tra xem có profile trong Firestore chưa
+          print('� [Google Sign-In] Kiểm tra profile trong Firestore...');
+          final userData = await FirebaseService.getUser(user.uid);
+          if (userData == null) {
+            print('🔵 [Google Sign-In] Tạo profile mới...');
+            await _createUserProfile(user);
+            print('✅ [Google Sign-In] Đã tạo profile');
+          } else {
+            print('✅ [Google Sign-In] Profile đã tồn tại');
+          }
+
+          // Lưu trạng thái đăng nhập
+          print('🔵 [Google Sign-In] Lưu login state...');
+          await saveLoginState(user.uid);
+          print('✅ [Google Sign-In] Hoàn tất!');
+
+          return {
+            'success': true,
+            'message': 'Đăng nhập Google thành công',
+            'user': {
+              'id': user.uid,
+              'email': user.email,
+              'name': user.displayName,
+              'photoUrl': user.photoURL,
+            },
+          };
         } else {
-          print('✅ [Google Sign-In] Profile đã tồn tại');
+          print('❌ [Google Sign-In] User null sau khi signIn');
+          return {
+            'success': false,
+            'message': 'Không thể lấy thông tin người dùng',
+          };
         }
+      } catch (e) {
+        // Nếu lỗi type casting, cố gắng lấy current user
+        print('⚠️ [Google Sign-In] Firebase Auth error: $e');
+        print('� [Google Sign-In] Thử lấy current user...');
+        
+        final currentUser = _auth.currentUser;
+        if (currentUser != null) {
+          print('✅ [Google Sign-In] Current user: ${currentUser.uid}');
+          
+          // Kiểm tra xem có profile trong Firestore chưa
+          print('🔵 [Google Sign-In] Kiểm tra profile trong Firestore...');
+          final userData = await FirebaseService.getUser(currentUser.uid);
+          if (userData == null) {
+            print('🔵 [Google Sign-In] Tạo profile mới...');
+            await _createUserProfile(currentUser);
+            print('✅ [Google Sign-In] Đã tạo profile');
+          } else {
+            print('✅ [Google Sign-In] Profile đã tồn tại');
+          }
 
-        // Lưu trạng thái đăng nhập
-        print('🔵 [Google Sign-In] Lưu login state...');
-        await saveLoginState(user.uid);
-        print('✅ [Google Sign-In] Hoàn tất!');
+          // Lưu trạng thái đăng nhập
+          print('🔵 [Google Sign-In] Lưu login state...');
+          await saveLoginState(currentUser.uid);
+          print('✅ [Google Sign-In] Hoàn tất!');
 
-        return {
-          'success': true,
-          'message': 'Đăng nhập Google thành công',
-          'user': {
-            'id': user.uid,
-            'email': user.email,
-            'name': user.displayName,
-            'photoUrl': user.photoURL,
-          },
-        };
-      } else {
-        print('❌ [Google Sign-In] User null sau khi signIn');
-        return {
-          'success': false,
-          'message': 'Không thể lấy thông tin người dùng',
-        };
+          return {
+            'success': true,
+            'message': 'Đăng nhập Google thành công',
+            'user': {
+              'id': currentUser.uid,
+              'email': currentUser.email,
+              'name': currentUser.displayName,
+              'photoUrl': currentUser.photoURL,
+            },
+          };
+        } else {
+          print('❌ [Google Sign-In] currentUser cũng null');
+          rethrow;
+        }
       }
     } on FirebaseAuthException catch (e) {
       print('❌ [Google Sign-In] FirebaseAuthException: ${e.code} - ${e.message}');

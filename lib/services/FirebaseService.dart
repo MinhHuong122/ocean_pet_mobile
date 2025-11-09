@@ -124,6 +124,48 @@ class FirebaseService {
     });
   }
 
+  /// Lấy danh sách thú cưng của user (một lần)
+  static Future<List<Map<String, dynamic>>> getPets() async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return [];
+
+      final snapshot = await _firestore
+          .collection('pets')
+          .where('user_id', isEqualTo: userId)
+          .orderBy('created_at', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      print('Error getting pets: $e');
+      rethrow;
+    }
+  }
+
+  /// Kiểm tra xem user đã có pet chưa (để quyết định hiển thị choose_pet_screen)
+  static Future<bool> userHasPets() async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return false;
+
+      final snapshot = await _firestore
+          .collection('pets')
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+
+      return snapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking if user has pets: $e');
+      return false;
+    }
+  }
+
   /// Cập nhật thông tin thú cưng
   static Future<void> updatePet(String petId, Map<String, dynamic> data) async {
     try {

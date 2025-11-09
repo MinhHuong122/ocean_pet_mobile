@@ -1,0 +1,157 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==================== HELPER FUNCTIONS ====================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user owns the resource (using user_id field)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if the resource belongs to the current user
+    function isResourceOwner() {
+      return isAuthenticated() && resource.data.user_id == request.auth.uid;
+    }
+    
+    // Check if the incoming resource will belong to the current user
+    function isRequestResourceOwner() {
+      return isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+    }
+    
+    // ==================== USERS COLLECTION ====================
+    // Users can read all user profiles (for social features)
+    // Users can only create/update/delete their own profile
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update, delete: if isOwner(userId);
+    }
+    
+    // ==================== PETS COLLECTION ====================
+    // Users can only read/write their own pets
+    match /pets/{petId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== FOLDERS COLLECTION ====================
+    // Users can only read/write their own folders
+    match /folders/{folderId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== DIARY ENTRIES COLLECTION ====================
+    // Users can only read/write their own diary entries
+    match /diary_entries/{entryId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== REMINDERS COLLECTION ====================
+    // Users can only read/write their own reminders
+    match /reminders/{reminderId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== APPOINTMENTS COLLECTION ====================
+    // Users can only read/write their own appointments
+    match /appointments/{appointmentId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== HEALTH RECORDS COLLECTION ====================
+    // Users can only read/write their own health records
+    match /health_records/{recordId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== FEEDING SCHEDULE COLLECTION ====================
+    // Users can only read/write their own feeding schedules
+    match /feeding_schedule/{scheduleId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== NOTIFICATIONS COLLECTION ====================
+    // Users can only read/write their own notifications
+    match /notifications/{notificationId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== ACTIVITIES COLLECTION ====================
+    // Users can only read/write their own activities
+    match /activities/{activityId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== EXPENSES COLLECTION ====================
+    // Users can only read/write their own expenses
+    match /expenses/{expenseId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== VACCINATIONS COLLECTION ====================
+    // Users can only read/write their own vaccination records
+    match /vaccinations/{vaccinationId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== MEDICATIONS COLLECTION ====================
+    // Users can only read/write their own medication records
+    match /medications/{medicationId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== WEIGHT RECORDS COLLECTION ====================
+    // Users can only read/write their own weight records
+    match /weight_records/{recordId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== PHOTOS COLLECTION ====================
+    // Users can only read/write their own photos
+    match /photos/{photoId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+    
+    // ==================== VIDEOS COLLECTION ====================
+    // Users can only read/write their own videos
+    match /videos/{videoId} {
+      allow read: if isResourceOwner();
+      allow create: if isRequestResourceOwner();
+      allow update, delete: if isResourceOwner();
+    }
+  }
+}

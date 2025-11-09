@@ -4,7 +4,6 @@ import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/screens/welcome_screen.dart';
 import 'package:ocean_pet/screens/login_screen.dart';
-import 'package:ocean_pet/screens/otp_verification_screen.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 
@@ -160,38 +159,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
+      print('📝 [Register] Calling AuthService.register...');
       final result = await AuthService.register(
         _nameController.text.trim(),
         _emailController.text.trim(),
         _passwordController.text,
       );
 
-      if (result['success']) {
+      print('📝 [Register] Register result: $result');
+      
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        // Đăng ký thành công → Chuyển sang màn hình đăng nhập
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đăng ký thành công! Vui lòng kiểm tra email để xác thực.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
         if (mounted) {
-          // Chuyển sang màn hình OTP verification
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => OTPVerificationScreen(
-                email: _emailController.text.trim(),
-              ),
+              builder: (context) => const LoginScreen(),
             ),
           );
         }
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Đăng ký thất bại'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']?.toString() ?? 'Đăng ký thất bại'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
+        print('❌ [Register] Error: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Có lỗi xảy ra, vui lòng thử lại'),
+          SnackBar(
+            content: Text('Lỗi: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );

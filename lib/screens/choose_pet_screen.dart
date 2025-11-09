@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ocean_pet/screens/home_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ocean_pet/screens/create_pet_profile_screen.dart';
 
 class ChoosePetScreen extends StatefulWidget {
   @override
@@ -8,11 +7,18 @@ class ChoosePetScreen extends StatefulWidget {
 }
 
 class _ChoosePetScreenState extends State<ChoosePetScreen> {
-  Future<void> _saveSelectedPets() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedPetNames =
-        selectedIndexes.map((i) => pets[i]['title'] as String).toList();
-    await prefs.setStringList('selected_pets', selectedPetNames);
+  void _goToCreateProfile() {
+    final selectedPetTypes = selectedIndexes
+        .map((i) => pets[i]['title'] as String)
+        .toList();
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => CreatePetProfileScreen(
+          selectedPetTypes: selectedPetTypes,
+        ),
+      ),
+    );
   }
 
   final Set<int> selectedIndexes = {};
@@ -163,16 +169,7 @@ class _ChoosePetScreenState extends State<ChoosePetScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: selectedIndexes.isNotEmpty
-                    ? () async {
-                        await _saveSelectedPets();
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (context) => HomeScreen(),
-                          ),
-                        );
-                      }
-                    : null,
+                onPressed: selectedIndexes.isNotEmpty ? _goToCreateProfile : null,
                 style: ButtonStyle(
                   padding: WidgetStateProperty.all(
                       const EdgeInsets.symmetric(vertical: 16)),
@@ -188,12 +185,13 @@ class _ChoosePetScreenState extends State<ChoosePetScreen> {
                   elevation: WidgetStateProperty.all(0),
                 ),
                 child: Text(
-                  'Xác nhận',
+                  'Tiếp theo',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color:
-                        selectedIndexes.isNotEmpty ? Colors.white : Colors.grey,
+                    color: selectedIndexes.isNotEmpty
+                        ? Colors.white
+                        : Colors.grey,
                   ),
                 ),
               ),

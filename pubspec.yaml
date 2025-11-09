@@ -30,6 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  flutter_localizations:
+    sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -50,19 +53,22 @@ dependencies:
   # uni_links: ^0.5.1 (đã thay bằng app_links)
   app_links: ^3.0.0
   
+  # Date formatting
+  intl: ^0.20.2
+  
   # Image picker
   image_picker: ^1.0.7
   
-  # Firebase (compatible with Dart SDK 3.3.4)
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.16.0
-  cloud_firestore: ^4.13.6
-  firebase_storage: ^11.5.6
+  # Firebase (updated to latest stable versions compatible with Flutter 3.35.7)
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.4
   
-  # Google Sign-In
+  # Google Sign-In (updated)
   google_sign_in: ^6.2.1
-  # Facebook Auth
-  flutter_facebook_auth: ^7.1.0
+  # Facebook Auth (keep stable version)
+  flutter_facebook_auth: ^7.1.1
   permission_handler: ^11.3.1
 
   # Cloudinary for image upload

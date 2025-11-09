@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/screens/onboarding_screen.dart';
 import 'package:ocean_pet/screens/login_screen.dart';
@@ -43,6 +44,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Ocean Pet',
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('vi', 'VN'), // Tiếng Việt
+        Locale('en', 'US'), // English
+      ],
+      locale: const Locale('vi', 'VN'), // Mặc định tiếng Việt
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF8B5CF6), // Purple theme like Silent Moon
