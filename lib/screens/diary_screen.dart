@@ -1,785 +1,313 @@
-﻿// lib/screens/diary_screen.dart
+// lib/screens/diary_screen.dart - Unified Diary Screen with Full Features
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import './custom_bottom_nav.dart';
 import './trash_screen.dart';
+import './drawing_canvas.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
 
-class DiaryDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> entry;
-  final Function(Map<String, dynamic>) onUpdate;
-  final Function(String) onDelete;
-  const DiaryDetailScreen({
-    super.key,
-    required this.entry,
-    required this.onUpdate,
-    required this.onDelete,
+// Model for Diary Entry
+class DiaryEntry {
+  String id;
+  String title;
+  String description;
+  String category;
+  String date;
+  String time;
+  Color color;
+  Color bgColor;
+  IconData icon;
+  List<String> images;
+  String? audioPath;
+  bool isPinned;
+  bool isLocked;
+  String? password;
+  String? folderId; // Pet ID from Firebase
+  String? folderName; // Pet name
+  String? deletedAt;
+  String? reminderDateTime; // ISO8601 string for reminder
+  
+  DiaryEntry({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.date,
+    required this.time,
+    required this.color,
+    required this.bgColor,
+    required this.icon,
+    this.images = const [],
+    this.audioPath,
+    this.isPinned = false,
+    this.isLocked = false,
+    this.password,
+    this.folderId,
+    this.folderName,
+    this.deletedAt,
+    this.reminderDateTime,
   });
-  @override
-  State<DiaryDetailScreen> createState() => _DiaryDetailScreenState();
+  
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'description': description,
+    'category': category,
+    'date': date,
+    'time': time,
+    'colorValue': color.value,
+    'bgColorValue': bgColor.value,
+    'iconCode': icon.codePoint,
+    'images': images,
+    'audioPath': audioPath,
+    'isPinned': isPinned,
+    'isLocked': isLocked,
+    'password': password,
+    'folderId': folderId,
+    'folderName': folderName,
+    'deletedAt': deletedAt,
+    'reminderDateTime': reminderDateTime,
+  };
+  
+  factory DiaryEntry.fromJson(Map<String, dynamic> json) => DiaryEntry(
+    id: json['id'],
+    title: json['title'],
+    description: json['description'],
+    category: json['category'],
+    date: json['date'],
+    time: json['time'],
+    color: Color(json['colorValue']),
+    bgColor: Color(json['bgColorValue']),
+    icon: IconData(json['iconCode'], fontFamily: 'MaterialIcons'),
+    images: List<String>.from(json['images'] ?? []),
+    audioPath: json['audioPath'],
+    isPinned: json['isPinned'] ?? false,
+    isLocked: json['isLocked'] ?? false,
+    password: json['password'],
+    folderId: json['folderId'],
+    folderName: json['folderName'],
+    deletedAt: json['deletedAt'],
+    reminderDateTime: json['reminderDateTime'],
+  );
 }
 
-class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
-  late TextEditingController _titleController;
-  late TextEditingController _descriptionController;
-  final ImagePicker _picker = ImagePicker();
-  List<String> folders = [];
-
-  bool _editingTitle = false;
-  bool _editingDescription = false;
-  late FocusNode _titleFocus;
-  late FocusNode _descFocus;
-
-  @override
-  void initState() {
-    super.initState();
-    _titleController = TextEditingController(text: widget.entry['title']);
-    _descriptionController =
-        TextEditingController(text: widget.entry['description']);
-    _titleFocus = FocusNode();
-    _descFocus = FocusNode();
-    _loadFoldersFromPrefs();
-  }
-
-  Future<void> _loadFoldersFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final petFolders = prefs.getStringList('selected_pets') ?? [];
-    setState(() {
-      folders = petFolders.isNotEmpty ? petFolders : ['Chưa chọn thú cưng'];
-    });
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _titleFocus.dispose();
-    _descFocus.dispose();
-    super.dispose();
-  }
-
-  void _saveChanges() {
-    widget.entry['title'] = _titleController.text;
-    widget.entry['description'] = _descriptionController.text;
-    widget.onUpdate(widget.entry);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã lưu thay đổi'),
-        backgroundColor: Color(0xFF66BB6A),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Color bgColor = widget.entry['bgColor'] ?? Colors.white;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF22223B)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Chi tiết hoạt động',
-          style: GoogleFonts.afacad(
-            color: const Color(0xFF22223B),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Color(0xFF22223B)),
-            onSelected: (value) {
-              switch (value) {
-                case 'change_tag':
-                  _showChangeTagDialog();
-                  break;
-                case 'add_image':
-                  _addImage();
-                  break;
-                case 'change_color':
-                  _showColorPicker();
-                  break;
-                case 'set_password':
-                  _showSetPasswordDialog();
-                  break;
-                case 'add_to_folder':
-                  _showAddToFolderDialog();
-                  break;
-                case 'delete':
-                  _confirmDelete();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'change_tag',
-                child: Row(
-                  children: [
-                    const Icon(Icons.label, color: Color(0xFF8E97FD), size: 20),
-                    const SizedBox(width: 12),
-                    Text('Đổi tag', style: GoogleFonts.afacad()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'add_image',
-                child: Row(
-                  children: [
-                    const Icon(Icons.image, color: Color(0xFF8E97FD), size: 20),
-                    const SizedBox(width: 12),
-                    Text('Thêm hình', style: GoogleFonts.afacad()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'change_color',
-                child: Row(
-                  children: [
-                    const Icon(Icons.palette,
-                        color: Color(0xFF8E97FD), size: 20),
-                    const SizedBox(width: 12),
-                    Text('Đổi màu nền', style: GoogleFonts.afacad()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'set_password',
-                child: Row(
-                  children: [
-                    const Icon(Icons.lock, color: Color(0xFF8E97FD), size: 20),
-                    const SizedBox(width: 12),
-                    Text('Đặt mật khẩu', style: GoogleFonts.afacad()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'add_to_folder',
-                child: Row(
-                  children: [
-                    const Icon(Icons.folder,
-                        color: Color(0xFF8E97FD), size: 20),
-                    const SizedBox(width: 12),
-                    Text('Thêm vào thư mục', style: GoogleFonts.afacad()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete,
-                        color: Color(0xFFEF5350), size: 20),
-                    const SizedBox(width: 12),
-                    Text('Xóa',
-                        style:
-                            GoogleFonts.afacad(color: const Color(0xFFEF5350))),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      backgroundColor: bgColor,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: widget.entry['color'].withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(widget.entry['icon'],
-                      color: widget.entry['color'], size: 28),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  widget.entry['category'],
-                  style: GoogleFonts.afacad(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: widget.entry['color'],
-                  ),
-                ),
-                if (widget.entry['hasPassword'] == true) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.lock, size: 16, color: Colors.grey),
-                ],
-                if (widget.entry['folder'] != null) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.folder, size: 12, color: Colors.blue),
-                        const SizedBox(width: 4),
-                        Text(
-                          widget.entry['folder'],
-                          style: GoogleFonts.afacad(
-                              fontSize: 11, color: Colors.blue),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 24),
-            _editingTitle
-                ? TextField(
-                    controller: _titleController,
-                    focusNode: _titleFocus,
-                    style: GoogleFonts.afacad(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF22223B),
-                    ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    onSubmitted: (_) {
-                      setState(() {
-                        _editingTitle = false;
-                        _saveChanges();
-                      });
-                    },
-                    onEditingComplete: () {
-                      setState(() {
-                        _editingTitle = false;
-                        _saveChanges();
-                      });
-                    },
-                    autofocus: true,
-                    onTapOutside: (_) {
-                      setState(() {
-                        _editingTitle = false;
-                        _saveChanges();
-                      });
-                    },
-                  )
-                : GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _editingTitle = true;
-                        FocusScope.of(context).requestFocus(_titleFocus);
-                      });
-                    },
-                    child: Text(
-                      _titleController.text,
-                      style: GoogleFonts.afacad(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF22223B),
-                      ),
-                    ),
-                  ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.access_time, size: 16, color: Colors.grey[400]),
-                const SizedBox(width: 4),
-                Text(
-                  '${widget.entry['time']} • ${widget.entry['date']}',
-                  style: GoogleFonts.afacad(
-                    fontSize: 14,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _editingDescription
-                ? TextField(
-                    controller: _descriptionController,
-                    focusNode: _descFocus,
-                    maxLines: 5,
-                    style: GoogleFonts.afacad(
-                      fontSize: 16,
-                      color: const Color(0xFF6B7280),
-                    ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    onSubmitted: (_) {
-                      setState(() {
-                        _editingDescription = false;
-                        _saveChanges();
-                      });
-                    },
-                    onEditingComplete: () {
-                      setState(() {
-                        _editingDescription = false;
-                        _saveChanges();
-                      });
-                    },
-                    autofocus: true,
-                    onTapOutside: (_) {
-                      setState(() {
-                        _editingDescription = false;
-                        _saveChanges();
-                      });
-                    },
-                  )
-                : GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _editingDescription = true;
-                        FocusScope.of(context).requestFocus(_descFocus);
-                      });
-                    },
-                    child: Text(
-                      _descriptionController.text,
-                      style: GoogleFonts.afacad(
-                        fontSize: 16,
-                        color: const Color(0xFF6B7280),
-                      ),
-                    ),
-                  ),
-            if (widget.entry['images'] != null &&
-                widget.entry['images'].isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children:
-                    (widget.entry['images'] as List<String>).map((imagePath) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(imagePath),
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showChangeTagDialog() {
-    final categories = ['Ăn uống', 'Sức khỏe', 'Vui chơi', 'Tắm rửa'];
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('Đổi nhãn',
-            style: GoogleFonts.afacad(
-                fontWeight: FontWeight.bold, color: Colors.black)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: categories.map((cat) {
-            return ListTile(
-              title: Text(cat, style: GoogleFonts.afacad()),
-              onTap: () {
-                setState(() {
-                  widget.entry['category'] = cat;
-                  widget.entry['color'] = _getCategoryColor(cat);
-                  widget.entry['icon'] = _getCategoryIcon(cat);
-                  _saveChanges();
-                });
-                Navigator.pop(context);
-              },
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _addImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        widget.entry['images'] ??= [];
-        widget.entry['images'].add(image.path);
-        _saveChanges();
-      });
-    }
-  }
-
-  void _showColorPicker() {
-    final colors = [
-      Colors.white,
-      const Color(0xFFFFF9E6),
-      const Color(0xFFFFE6E6),
-      const Color(0xFFE6F7FF),
-      const Color(0xFFF0E6FF),
-      const Color(0xFFE6FFE6),
-    ];
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('Chọn màu nền',
-            style: GoogleFonts.afacad(
-                fontWeight: FontWeight.bold, color: Colors.black)),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: colors.map((color) {
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  widget.entry['bgColor'] = color;
-                  _saveChanges();
-                });
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: color,
-                  border: Border.all(color: Colors.grey, width: 1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  void _showSetPasswordDialog() {
-    final passwordController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('Đặt mật khẩu',
-            style: GoogleFonts.afacad(
-                fontWeight: FontWeight.bold, color: Colors.black)),
-        content: TextField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: 'Mật khẩu',
-            labelStyle: GoogleFonts.afacad(),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                widget.entry['password'] = passwordController.text;
-                widget.entry['hasPassword'] = true;
-                _saveChanges();
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã đặt mật khẩu')),
-              );
-            },
-            child: Text('Lưu',
-                style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddToFolderDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('Thêm vào thư mục',
-            style: GoogleFonts.afacad(
-                fontWeight: FontWeight.bold, color: Colors.black)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: folders.map((folder) {
-            return ListTile(
-              leading: const Icon(Icons.folder, color: Color(0xFF8E97FD)),
-              title: Text(folder, style: GoogleFonts.afacad()),
-              onTap: () {
-                setState(() {
-                  widget.entry['folder'] = folder;
-                  _saveChanges();
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã thêm vào thư mục "$folder"')),
-                );
-              },
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  void _confirmDelete() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Xóa hoạt động',
-            style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        content: Text(
-          'Hoạt động sẽ được chuyển vào thùng rác và lưu trữ trong 30 ngày.',
-          style: GoogleFonts.afacad(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              widget.entry['deletedAt'] = DateTime.now().toIso8601String();
-              widget.onDelete(widget.entry['id']);
-              Navigator.pop(context);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã chuyển vào thùng rác'),
-                  backgroundColor: Color(0xFFEF5350),
-                ),
-              );
-            },
-            child: Text('Xóa',
-                style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Ăn uống':
-        return Icons.restaurant;
-      case 'Sức khỏe':
-        return Icons.medical_services;
-      case 'Vui chơi':
-        return Icons.sports_soccer;
-      case 'Tắm rửa':
-        return Icons.bathroom;
-      default:
-        return Icons.event_note;
-    }
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'Ăn uống':
-        return const Color(0xFFFFB74D);
-      case 'Sức khỏe':
-        return const Color(0xFFEF5350);
-      case 'Vui chơi':
-        return const Color(0xFF66BB6A);
-      case 'Tắm rửa':
-        return const Color(0xFF64B5F6);
-      default:
-        return const Color(0xFF8E97FD);
-    }
-  }
+// Pet Folder Model
+class PetFolder {
+  String id;
+  String name;
+  String type; // Mèo, Chó, etc.
+  int entryCount;
+  
+  PetFolder({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.entryCount = 0,
+  });
 }
 
 class DiaryScreen extends StatefulWidget {
   const DiaryScreen({super.key});
+  
   @override
   State<DiaryScreen> createState() => _DiaryScreenState();
 }
 
 class _DiaryScreenState extends State<DiaryScreen> {
   String selectedFilter = 'Tất cả';
-  // Update folders to represent pet types
-  List<String> folders = ['Mèo', 'Chó', 'Chuột', 'Chim', 'Cá', 'Thỏ', 'Rùa'];
-  List<Map<String, dynamic>> trashedEntries = [];
-  final List<String> filters = [
-    'Tất cả',
-    'Ăn uống',
-    'Sức khỏe',
-    'Vui chơi',
-    'Tắm rửa'
-  ];
+  List<PetFolder> petFolders = [];
+  List<DiaryEntry> diaryEntries = [];
+  List<DiaryEntry> trashedEntries = [];
+  
+  final List<String> filters = ['Tất cả', 'Ăn uống', 'Sức khỏe', 'Vui chơi', 'Tắm rửa'];
   String searchQuery = '';
   bool isSearching = false;
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> diaryEntries = [
-    {
-      'id': '1',
-      'title': 'Mochi ăn sáng',
-      'time': '8:00 AM',
-      'date': '17/09/2025',
-      'category': 'Ăn uống',
-      'description': 'Mochi đã ăn 100g thức ăn khô và uống nước',
-      'icon': Icons.restaurant,
-      'color': Color(0xFFFFB74D),
-    },
-    {
-      'id': '2',
-      'title': 'Tắm cho Mochi',
-      'time': '2:00 PM',
-      'date': '17/09/2025',
-      'category': 'Tắm rửa',
-      'description': 'Tắm và chải lông cho Mochi',
-      'icon': Icons.bathroom,
-      'color': Color(0xFF64B5F6),
-    },
-    {
-      'id': '3',
-      'title': 'Khám sức khỏe định kỳ',
-      'time': '10:00 AM',
-      'date': '15/09/2025',
-      'category': 'Sức khỏe',
-      'description': 'Kiểm tra sức khỏe tổng quát tại phòng khám',
-      'icon': Icons.medical_services,
-      'color': Color(0xFFEF5350),
-    },
-    {
-      'id': '4',
-      'title': 'Chơi đùa ngoài trời',
-      'time': '5:00 PM',
-      'date': '14/09/2025',
-      'category': 'Vui chơi',
-      'description': 'Mochi chơi với bóng và chạy nhảy 30 phút',
-      'icon': Icons.sports_soccer,
-      'color': Color(0xFF66BB6A),
-    },
-    {
-      'id': '5',
-      'title': 'Uống thuốc dị ứng',
-      'time': '9:00 AM',
-      'date': '13/09/2025',
-      'category': 'Sức khỏe',
-      'description': 'Cho Mochi uống thuốc theo đơn bác sĩ',
-      'icon': Icons.medication,
-      'color': Color(0xFFEF5350),
-    },
-  ];
-
-  void _showCreateFolderDialog() {
-    final folderController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text('Tạo thú nuôi mới',
-              style: GoogleFonts.afacad(
-                  fontWeight: FontWeight.bold, color: Colors.black)),
-          content: TextField(
-            controller: folderController,
-            decoration: InputDecoration(
-              labelText: 'Tên thú nuôi',
-              labelStyle: GoogleFonts.afacad(),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              hintText: 'VD: Sóc, Nhím, ...',
-              hintStyle: GoogleFonts.afacad(color: Colors.grey),
-            ),
-            style: GoogleFonts.afacad(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                final newFolder = folderController.text.trim();
-                if (newFolder.isNotEmpty && !folders.contains(newFolder)) {
-                  setState(() {
-                    folders.add(newFolder);
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Đã thêm thú nuôi mới'),
-                      backgroundColor: Color(0xFF66BB6A),
-                    ),
-                  );
-                } else if (folders.contains(newFolder)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Thú nuôi đã tồn tại'),
-                      backgroundColor: Color(0xFFEF5350),
-                    ),
-                  );
-                }
-              },
-              child: Text('Tạo',
-                  style: GoogleFonts.afacad(
-                      color: Color(0xFF8E97FD), fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
+  
+  String? selectedFolderId; // Filter by pet
+  bool _isLoading = true;
+  
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+  bool _isRecorderInitialized = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initRecorder();
+    _loadData();
   }
-
-  void _moveToTrash(String entryId) {
-    final entryIndex = diaryEntries.indexWhere((e) => e['id'] == entryId);
-    if (entryIndex != -1) {
-      final entry = diaryEntries[entryIndex];
-      entry['deletedAt'] = DateTime.now().toIso8601String();
-      setState(() {
-        trashedEntries.add(entry);
-        diaryEntries.removeAt(entryIndex);
-      });
+  
+  Future<void> _initRecorder() async {
+    try {
+      final status = await Permission.microphone.request();
+      if (status == PermissionStatus.granted) {
+        await _recorder.openRecorder();
+        setState(() {
+          _isRecorderInitialized = true;
+        });
+      }
+    } catch (e) {
+      print('❌ Error initializing recorder: $e');
     }
   }
-
-  void _updateEntry(Map<String, dynamic> updatedEntry) {
-    final index = diaryEntries.indexWhere((e) => e['id'] == updatedEntry['id']);
-    if (index != -1) {
+  
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    await Future.wait([
+      _loadPetFolders(),
+      _loadDiaryEntries(),
+      _loadTrashedEntries(),
+    ]);
+    setState(() => _isLoading = false);
+  }
+  
+  Future<void> _loadPetFolders() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      final snapshot = await FirebaseFirestore.instance
+          .collection('pets')
+          .where('user_id', isEqualTo: user.uid)
+          .get();
+      
       setState(() {
-        diaryEntries[index] = updatedEntry;
+        petFolders = snapshot.docs.map((doc) {
+          return PetFolder(
+            id: doc.id,
+            name: doc['name'] ?? 'Unknown',
+            type: doc['species'] ?? 'Unknown',
+            entryCount: 0,
+          );
+        }).toList();
       });
+      
+      print('🐾 Loaded ${petFolders.length} pet folders');
+    } catch (e) {
+      print('❌ Error loading pet folders: $e');
     }
   }
-
+  
+  Future<void> _loadDiaryEntries() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? entriesJson = prefs.getString('diary_entries');
+      
+      if (entriesJson != null) {
+        final List<dynamic> decoded = jsonDecode(entriesJson);
+        setState(() {
+          diaryEntries = decoded.map((e) => DiaryEntry.fromJson(e)).toList();
+          // Sort: pinned first, then by date
+          diaryEntries.sort((a, b) {
+            if (a.isPinned != b.isPinned) {
+              return a.isPinned ? -1 : 1;
+            }
+            return b.date.compareTo(a.date);
+          });
+        });
+      } else {
+        // Sample entry
+        setState(() {
+          diaryEntries = [
+            DiaryEntry(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              title: 'Mochi ăn sáng',
+              time: '8:00 AM',
+              date: DateTime.now().toIso8601String(),
+              category: 'Ăn uống',
+              description: 'Mochi đã ăn 100g thức ăn khô và uống nước',
+              icon: Icons.restaurant,
+              color: const Color(0xFFFFB74D),
+              bgColor: Colors.white,
+            ),
+          ];
+        });
+      }
+      
+      print('📝 Loaded ${diaryEntries.length} diary entries');
+    } catch (e) {
+      print('❌ Error loading diary entries: $e');
+    }
+  }
+  
+  Future<void> _loadTrashedEntries() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? trashedJson = prefs.getString('trashed_entries');
+      
+      if (trashedJson != null) {
+        final List<dynamic> decoded = jsonDecode(trashedJson);
+        setState(() {
+          trashedEntries = decoded.map((e) => DiaryEntry.fromJson(e)).toList();
+        });
+      }
+      
+      print('🗑️ Loaded ${trashedEntries.length} trashed entries');
+    } catch (e) {
+      print('❌ Error loading trashed entries: $e');
+    }
+  }
+  
+  Future<void> _saveDiaryEntries() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String encoded = jsonEncode(diaryEntries.map((e) => e.toJson()).toList());
+      await prefs.setString('diary_entries', encoded);
+      print('💾 Saved ${diaryEntries.length} diary entries');
+    } catch (e) {
+      print('❌ Error saving diary entries: $e');
+    }
+  }
+  
+  Future<void> _saveTrashedEntries() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String encoded = jsonEncode(trashedEntries.map((e) => e.toJson()).toList());
+      await prefs.setString('trashed_entries', encoded);
+      print('💾 Saved ${trashedEntries.length} trashed entries');
+    } catch (e) {
+      print('❌ Error saving trashed entries: $e');
+    }
+  }
+  
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _recorder.closeRecorder();
+    super.dispose();
+  }
+  
   @override
   Widget build(BuildContext context) {
-    // Apply filter and search
-    List<Map<String, dynamic>> filteredEntries = selectedFilter == 'Tất cả'
-        ? diaryEntries
-        : diaryEntries
-            .where((entry) => entry['category'] == selectedFilter)
-            .toList();
-    if (searchQuery.isNotEmpty) {
-      filteredEntries = filteredEntries.where((entry) {
-        final title = (entry['title'] ?? '').toString().toLowerCase();
-        final desc = (entry['description'] ?? '').toString().toLowerCase();
+    // Apply filters
+    List<DiaryEntry> filteredEntries = diaryEntries.where((entry) {
+      // Filter by category
+      if (selectedFilter != 'Tất cả' && entry.category != selectedFilter) {
+        return false;
+      }
+      // Filter by pet folder
+      if (selectedFolderId != null && entry.folderId != selectedFolderId) {
+        return false;
+      }
+      // Filter by search query
+      if (searchQuery.isNotEmpty) {
+        final title = entry.title.toLowerCase();
+        final desc = entry.description.toLowerCase();
         final query = searchQuery.toLowerCase();
         return title.contains(query) || desc.contains(query);
-      }).toList();
-    }
+      }
+      return true;
+    }).toList();
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -802,17 +330,12 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 decoration: InputDecoration(
                   hintText: 'Tìm kiếm hoạt động...',
                   hintStyle: GoogleFonts.afacad(
-                    color: Colors.grey[400],
+                    color: Colors.grey,
                     fontSize: 16,
                   ),
                   border: InputBorder.none,
                 ),
                 onChanged: (value) {
-                  setState(() {
-                    searchQuery = value;
-                  });
-                },
-                onSubmitted: (value) {
                   setState(() {
                     searchQuery = value;
                   });
@@ -835,12 +358,8 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
             onPressed: () {
               setState(() {
-                if (isSearching) {
-                  // Confirm search
-                  isSearching = false;
-                } else {
-                  // Start searching
-                  isSearching = true;
+                isSearching = !isSearching;
+                if (!isSearching) {
                   searchQuery = '';
                   _searchController.clear();
                 }
@@ -860,119 +379,98 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Filter chips
-            Padding(
-              padding: const EdgeInsets.only(
-                  top: 16, left: 18, right: 18, bottom: 0),
-              child: SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: filters.length,
-                  itemBuilder: (context, index) {
-                    final filter = filters[index];
-                    final isSelected = filter == selectedFilter;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: FilterChip(
-                        label: Text(
-                          filter,
-                          style: GoogleFonts.afacad(
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF8E97FD),
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() {
-                            selectedFilter = filter;
-                          });
-                        },
-                        backgroundColor: Colors.white,
-                        selectedColor: const Color(0xFF8E97FD),
-                        side: BorderSide(
-                          color: const Color(0xFF8E97FD),
-                          width: 1.5,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            // Diary entries grid
-            Expanded(
-              child: filteredEntries.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.event_note,
-                            size: 80,
-                            color: Colors.grey[300],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Chưa có hoạt động nào',
-                            style: GoogleFonts.afacad(
-                              fontSize: 18,
-                              color: Colors.grey[400],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(18.0),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 0.95,
-                      ),
-                      itemCount: filteredEntries.length,
-                      itemBuilder: (context, index) {
-                        final entry = filteredEntries[index];
-                        return _buildDiaryGridCard(entry, onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => DiaryDetailScreen(
-                                entry: entry,
-                                onUpdate: _updateEntry,
-                                onDelete: _moveToTrash,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF8E97FD)))
+          : SafeArea(
+              child: Column(
+                children: [
+                  // Filter chips
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, left: 18, right: 18, bottom: 0),
+                    child: SizedBox(
+                      height: 40,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: filters.length,
+                        itemBuilder: (context, index) {
+                          final filter = filters[index];
+                          final isSelected = selectedFilter == filter;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: ChoiceChip(
+                              label: Text(filter),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  selectedFilter = filter;
+                                });
+                              },
+                              labelStyle: GoogleFonts.afacad(
+                                color: const Color(0xFF8E97FD),
+                                fontWeight: FontWeight.bold,
+                              ),
+                              backgroundColor: Colors.white,
+                              selectedColor: const Color(0xFF8E97FD).withOpacity(0.1),
+                              side: const BorderSide(
+                                color: Color(0xFF8E97FD),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
                           );
-                        });
-                      },
+                        },
+                      ),
                     ),
+                  ),
+                  // Diary entries grid
+                  Expanded(
+                    child: filteredEntries.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.event_note, size: 80, color: Colors.grey[300]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Chưa có hoạt động nào',
+                                  style: GoogleFonts.afacad(
+                                    fontSize: 18,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : GridView.builder(
+                            padding: const EdgeInsets.all(18),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.75,
+                            ),
+                            itemCount: filteredEntries.length,
+                            itemBuilder: (context, index) {
+                              final entry = filteredEntries[index];
+                              return _buildDiaryGridCard(entry);
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
       drawer: _buildDrawer(context),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showAddEntryDialog();
-        },
+        onPressed: _showAddEntryDialog,
         backgroundColor: const Color(0xFF8E97FD),
         child: const Icon(Icons.add, color: Colors.white),
       ),
       bottomNavigationBar: const CustomBottomNav(currentIndex: 1),
     );
   }
-
+  
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.6,
@@ -1001,10 +499,10 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 ],
               ),
             ),
+            // Create new folder option
             ListTile(
-              leading:
-                  const Icon(Icons.create_new_folder, color: Color(0xFF8E97FD)),
-              title: Text('Tạo thú nuôi mới',
+              leading: const Icon(Icons.add_circle, color: Color(0xFF8E97FD)),
+              title: Text('Tạo thư mục mới',
                   style: GoogleFonts.afacad(fontSize: 14)),
               onTap: () {
                 Navigator.pop(context);
@@ -1012,14 +510,13 @@ class _DiaryScreenState extends State<DiaryScreen> {
               },
             ),
             const Divider(),
+            // Trash
             ListTile(
-              leading:
-                  const Icon(Icons.delete_outline, color: Color(0xFFEF5350)),
+              leading: const Icon(Icons.delete_outline, color: Color(0xFFEF5350)),
               title: Text('Thùng rác', style: GoogleFonts.afacad(fontSize: 14)),
               trailing: trashedEntries.isNotEmpty
                   ? Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF5350),
                         borderRadius: BorderRadius.circular(12),
@@ -1036,26 +533,20 @@ class _DiaryScreenState extends State<DiaryScreen> {
                   : null,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context).push(
+                Navigator.push(
+                  context,
                   MaterialPageRoute(
-                    builder: (_) => TrashScreen(
-                      trashedEntries: trashedEntries,
-                      onRestore: (entry) {
-                        setState(() {
-                          diaryEntries.add(entry);
-                        });
-                      },
-                      onDeletePermanently: (entry) {
-                        setState(() {
-                          trashedEntries.remove(entry);
-                        });
-                      },
+                    builder: (context) => TrashScreen(
+                      trashedEntries: trashedEntries.map((e) => e.toJson()).toList(),
+                      onRestore: _restoreEntry,
+                      onDeletePermanently: (entryData) => _permanentlyDeleteEntry(entryData['id']),
                     ),
                   ),
                 );
               },
             ),
             const Divider(),
+            // Section header
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
@@ -1067,14 +558,16 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 ),
               ),
             ),
-            ...folders.map((folder) {
+            // Pet folders
+            ...petFolders.map((folder) {
               return ListTile(
-                leading:
-                    const Icon(Icons.pets, color: Color(0xFF8E97FD), size: 20),
-                title: Text(folder, style: GoogleFonts.afacad(fontSize: 14)),
+                leading: const Icon(Icons.pets, color: Color(0xFF8E97FD), size: 20),
+                title: Text(folder.name, style: GoogleFonts.afacad(fontSize: 14)),
                 onTap: () {
+                  setState(() {
+                    selectedFolderId = folder.id;
+                  });
                   Navigator.pop(context);
-                  // TODO: Lọc theo thú nuôi
                 },
               );
             }).toList(),
@@ -1083,68 +576,77 @@ class _DiaryScreenState extends State<DiaryScreen> {
       ),
     );
   }
-
-  Widget _buildDiaryGridCard(Map<String, dynamic> entry,
-      {VoidCallback? onTap}) {
+  
+  IconData _getPetIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'chó':
+      case 'dog':
+        return Icons.pets;
+      case 'mèo':
+      case 'cat':
+        return Icons.pets;
+      case 'chim':
+      case 'bird':
+        return Icons.flutter_dash;
+      case 'cá':
+      case 'fish':
+        return Icons.waves;
+      default:
+        return Icons.pets;
+    }
+  }
+  
+  Widget _buildDiaryGridCard(DiaryEntry entry) {
     return InkWell(
-      onTap: onTap,
+      onTap: () => _openEntryDetail(entry),
       onLongPress: () => _showEntryOptions(entry),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: entry['color'].withOpacity(0.13),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.grey[200]!,
+            width: 1,
+          ),
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: entry['color'].withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(10),
+                    color: entry.color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    entry['icon'],
-                    color: entry['color'],
-                    size: 20,
-                  ),
+                  child: Icon(entry.icon, color: entry.color, size: 24),
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: entry['color'].withOpacity(0.13),
-                    borderRadius: BorderRadius.circular(8),
+                    color: entry.color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    entry['category'],
+                    entry.category,
                     style: GoogleFonts.afacad(
                       fontSize: 11,
+                      color: entry.color,
                       fontWeight: FontWeight.bold,
-                      color: entry['color'],
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
-              entry['title'],
+              entry.title,
               style: GoogleFonts.afacad(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF22223B),
               ),
@@ -1153,39 +655,155 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              entry['description'],
+              entry.description,
               style: GoogleFonts.afacad(
                 fontSize: 13,
                 color: const Color(0xFF6B7280),
               ),
-              maxLines: 3,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const Spacer(),
+            const SizedBox(height: 8),
             Row(
               children: [
-                Icon(
-                  Icons.access_time,
-                  size: 13,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.access_time, size: 14, color: Colors.grey[400]),
                 const SizedBox(width: 4),
-                Text(
-                  '${entry['time']} • ${entry['date']}',
-                  style: GoogleFonts.afacad(
-                    fontSize: 12,
-                    color: Colors.grey[400],
+                Expanded(
+                  child: Text(
+                    '${entry.time} • ${entry.date.split('T')[0]}',
+                    style: GoogleFonts.afacad(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (entry.isPinned)
+                  const Icon(Icons.push_pin, color: Color(0xFF8E97FD), size: 16),
+                if (entry.isLocked)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(Icons.lock, color: Colors.grey, size: 16),
+                  ),
+                if (entry.audioPath != null)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(Icons.mic, color: Colors.orange, size: 16),
+                  ),
               ],
             ),
+            if (entry.folderName != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.folder, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Text(
+                    entry.folderName!,
+                    style: GoogleFonts.afacad(
+                      fontSize: 11,
+                      color: const Color(0xFF8E97FD),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
-
-  void _showEntryOptions(Map<String, dynamic> entry) {
+  
+  void _openEntryDetail(DiaryEntry entry) {
+    // Check if locked
+    if (entry.isLocked && entry.password != null) {
+      _showPasswordDialog(entry);
+    } else {
+      _navigateToDetail(entry);
+    }
+  }
+  
+  void _showPasswordDialog(DiaryEntry entry) {
+    final passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.lock, color: Color(0xFF8E97FD)),
+            const SizedBox(width: 8),
+            Text('Nhập mật khẩu', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Mật khẩu',
+            labelStyle: GoogleFonts.afacad(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (passwordController.text == entry.password) {
+                Navigator.pop(context);
+                _navigateToDetail(entry);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Mật khẩu không đúng'),
+                    backgroundColor: Color(0xFFEF5350),
+                  ),
+                );
+              }
+            },
+            child: Text('Mở', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _navigateToDetail(DiaryEntry entry) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DiaryDetailScreen(
+          entry: entry,
+          onUpdate: (updated) {
+            final index = diaryEntries.indexWhere((e) => e.id == updated.id);
+            if (index != -1) {
+              // Update existing entry
+              setState(() {
+                diaryEntries[index] = updated;
+              });
+            } else {
+              // Add new entry (for copy functionality)
+              setState(() {
+                diaryEntries.insert(0, updated); // Insert at beginning
+              });
+            }
+            _saveDiaryEntries();
+          },
+          onDelete: (id) {
+            _moveToTrash(id);
+          },
+          recorder: _recorder,
+          isRecorderInitialized: _isRecorderInitialized,
+        ),
+      ),
+    );
+  }
+  
+  void _showEntryOptions(DiaryEntry entry) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -1198,17 +816,78 @@ class _DiaryScreenState extends State<DiaryScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.edit, color: Color(0xFF8E97FD)),
-                title:
-                    Text('Chỉnh sửa', style: GoogleFonts.afacad(fontSize: 16)),
+                leading: Icon(
+                  entry.isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                  color: const Color(0xFF8E97FD),
+                ),
+                title: Text(
+                  entry.isPinned ? 'Bỏ ưu tiên' : 'Đặt ưu tiên',
+                  style: GoogleFonts.afacad(),
+                ),
+                onTap: () {
+                  setState(() {
+                    entry.isPinned = !entry.isPinned;
+                    diaryEntries.sort((a, b) {
+                      if (a.isPinned != b.isPinned) {
+                        return a.isPinned ? -1 : 1;
+                      }
+                      return b.date.compareTo(a.date);
+                    });
+                  });
+                  _saveDiaryEntries();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        entry.isPinned ? 'Đã đặt ưu tiên' : 'Đã bỏ ưu tiên',
+                        style: GoogleFonts.afacad(),
+                      ),
+                      backgroundColor: const Color(0xFF66BB6A),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  entry.isLocked ? Icons.lock_open : Icons.lock,
+                  color: const Color(0xFF8E97FD),
+                ),
+                title: Text(
+                  entry.isLocked ? 'Mở khóa' : 'Đặt mật khẩu',
+                  style: GoogleFonts.afacad(),
+                ),
                 onTap: () {
                   Navigator.pop(context);
-                  _showEditEntryDialog(entry);
+                  _showSetPasswordDialog(entry);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder, color: Color(0xFF8E97FD)),
+                title: Text('Thêm vào thư mục', style: GoogleFonts.afacad()),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAddToFolderDialog(entry);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.palette, color: Color(0xFF8E97FD)),
+                title: Text('Đổi màu nền', style: GoogleFonts.afacad()),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showColorPickerDialog(entry);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit, color: Color(0xFF8E97FD)),
+                title: Text('Chỉnh sửa', style: GoogleFonts.afacad()),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openEntryDetail(entry);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.delete, color: Color(0xFFEF5350)),
-                title: Text('Xóa', style: GoogleFonts.afacad(fontSize: 16)),
+                title: Text('Xóa', style: GoogleFonts.afacad()),
                 onTap: () {
                   Navigator.pop(context);
                   _confirmDeleteEntry(entry);
@@ -1216,7 +895,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.close, color: Colors.grey),
-                title: Text('Hủy', style: GoogleFonts.afacad(fontSize: 16)),
+                title: Text('Hủy', style: GoogleFonts.afacad()),
                 onTap: () => Navigator.pop(context),
               ),
             ],
@@ -1225,19 +904,16 @@ class _DiaryScreenState extends State<DiaryScreen> {
       },
     );
   }
-
-  void _confirmDeleteEntry(Map<String, dynamic> entry) {
+  
+  void _confirmDeleteEntry(DiaryEntry entry) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text('Xóa hoạt động',
-              style: GoogleFonts.afacad(
-                  fontWeight: FontWeight.bold, color: Colors.black)),
+          title: Text('Xóa hoạt động', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
           content: Text(
-            'Bạn có chắc chắn muốn xóa "${entry['title']}"?',
-            style: GoogleFonts.afacad(color: Colors.black),
+            'Hoạt động sẽ được chuyển vào thùng rác và lưu trữ trong 30 ngày.',
+            style: GoogleFonts.afacad(),
           ),
           actions: [
             TextButton(
@@ -1246,130 +922,80 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
             TextButton(
               onPressed: () {
-                setState(() {
-                  diaryEntries.removeWhere((e) => e['id'] == entry['id']);
-                });
+                _moveToTrash(entry.id);
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã xóa hoạt động'),
-                    backgroundColor: Color(0xFFEF5350),
-                  ),
-                );
               },
-              child: Text('Xóa',
-                  style: GoogleFonts.afacad(
-                      color: Color(0xFFEF5350), fontWeight: FontWeight.bold)),
+              child: Text('Xóa', style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
             ),
           ],
         );
       },
     );
   }
-
-  void _showEditEntryDialog(Map<String, dynamic> entry) {
-    final titleController = TextEditingController(text: entry['title']);
-    final descriptionController =
-        TextEditingController(text: entry['description']);
-    String selectedCategory = entry['category'];
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Chỉnh sửa hoạt động',
-                  style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: titleController,
-                      decoration: InputDecoration(
-                        labelText: 'Tiêu đề',
-                        labelStyle: GoogleFonts.afacad(),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      style: GoogleFonts.afacad(),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: descriptionController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Mô tả',
-                        labelStyle: GoogleFonts.afacad(),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      style: GoogleFonts.afacad(),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Danh mục',
-                        labelStyle: GoogleFonts.afacad(),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      items: filters.skip(1).map((filter) {
-                        return DropdownMenuItem(
-                          value: filter,
-                          child: Text(filter, style: GoogleFonts.afacad()),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          selectedCategory = value!;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Hủy',
-                      style: GoogleFonts.afacad(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      entry['title'] = titleController.text;
-                      entry['description'] = descriptionController.text;
-                      entry['category'] = selectedCategory;
-                      entry['color'] = _getCategoryColor(selectedCategory);
-                      entry['icon'] = _getCategoryIcon(selectedCategory);
-                    });
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Đã cập nhật hoạt động'),
-                        backgroundColor: Color(0xFF66BB6A),
-                      ),
-                    );
-                  },
-                  child: Text('Lưu',
-                      style: GoogleFonts.afacad(
-                          color: Color(0xFF8E97FD),
-                          fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+  
+  void _moveToTrash(String entryId) {
+    final index = diaryEntries.indexWhere((e) => e.id == entryId);
+    if (index != -1) {
+      final entry = diaryEntries[index];
+      entry.deletedAt = DateTime.now().toIso8601String();
+      setState(() {
+        trashedEntries.add(entry);
+        diaryEntries.removeAt(index);
+      });
+      _saveDiaryEntries();
+      _saveTrashedEntries();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã chuyển vào thùng rác', style: GoogleFonts.afacad()),
+          backgroundColor: const Color(0xFF66BB6A),
+          action: SnackBarAction(
+            label: 'Hoàn tác',
+            onPressed: () => _restoreEntry({'id': entryId}),
+          ),
+        ),
+      );
+    }
   }
-
+  
+  void _restoreEntry(Map<String, dynamic> entryData) {
+    final entryId = entryData['id'];
+    final index = trashedEntries.indexWhere((e) => e.id == entryId);
+    if (index != -1) {
+      final entry = trashedEntries[index];
+      entry.deletedAt = null;
+      setState(() {
+        diaryEntries.add(entry);
+        trashedEntries.removeAt(index);
+      });
+      _saveDiaryEntries();
+      _saveTrashedEntries();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã khôi phục hoạt động', style: GoogleFonts.afacad()),
+          backgroundColor: const Color(0xFF66BB6A),
+        ),
+      );
+    }
+  }
+  
+  void _permanentlyDeleteEntry(String entryId) {
+    final index = trashedEntries.indexWhere((e) => e.id == entryId);
+    if (index != -1) {
+      setState(() {
+        trashedEntries.removeAt(index);
+      });
+      _saveTrashedEntries();
+    }
+  }
+  
   void _showAddEntryDialog() {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
     String selectedCategory = 'Ăn uống';
+    String? selectedPetId;
+    
     showDialog(
       context: context,
       builder: (context) {
@@ -1387,10 +1013,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       decoration: InputDecoration(
                         labelText: 'Tiêu đề',
                         labelStyle: GoogleFonts.afacad(),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        hintText: 'VD: Mochi ăn sáng',
-                        hintStyle: GoogleFonts.afacad(color: Colors.grey),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       style: GoogleFonts.afacad(),
                     ),
@@ -1401,31 +1024,56 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       decoration: InputDecoration(
                         labelText: 'Mô tả',
                         labelStyle: GoogleFonts.afacad(),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        hintText: 'Mô tả chi tiết hoạt động...',
-                        hintStyle: GoogleFonts.afacad(color: Colors.grey),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       style: GoogleFonts.afacad(),
                     ),
                     const SizedBox(height: 16),
+                    // Category dropdown
                     DropdownButtonFormField<String>(
-                      initialValue: selectedCategory,
+                      value: selectedCategory,
                       decoration: InputDecoration(
                         labelText: 'Danh mục',
                         labelStyle: GoogleFonts.afacad(),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      items: filters.skip(1).map((filter) {
+                      items: filters.skip(1).map((category) {
                         return DropdownMenuItem(
-                          value: filter,
-                          child: Text(filter, style: GoogleFonts.afacad()),
+                          value: category,
+                          child: Text(category, style: GoogleFonts.afacad()),
                         );
                       }).toList(),
                       onChanged: (value) {
                         setDialogState(() {
                           selectedCategory = value!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Pet dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedPetId,
+                      decoration: InputDecoration(
+                        labelText: 'Thú cưng',
+                        labelStyle: GoogleFonts.afacad(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Không chọn', style: GoogleFonts.afacad()),
+                        ),
+                        ...petFolders.map((folder) {
+                          return DropdownMenuItem(
+                            value: folder.id,
+                            child: Text('${folder.name} (${folder.type})',
+                                style: GoogleFonts.afacad()),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedPetId = value;
                         });
                       },
                     ),
@@ -1435,46 +1083,50 @@ class _DiaryScreenState extends State<DiaryScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Hủy',
-                      style: GoogleFonts.afacad(color: Colors.grey)),
+                  child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
                 ),
                 TextButton(
                   onPressed: () {
-                    if (titleController.text.isEmpty ||
-                        descriptionController.text.isEmpty) {
+                    if (titleController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Vui lòng điền đầy đủ thông tin'),
+                        const SnackBar(
+                          content: Text('Vui lòng nhập tiêu đề'),
                           backgroundColor: Color(0xFFEF5350),
                         ),
                       );
                       return;
                     }
+                    
+                    final newEntry = DiaryEntry(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      title: titleController.text,
+                      description: descriptionController.text,
+                      category: selectedCategory,
+                      date: DateTime.now().toIso8601String(),
+                      time: '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                      icon: _getCategoryIcon(selectedCategory),
+                      color: _getCategoryColor(selectedCategory),
+                      bgColor: Colors.white,
+                      folderId: selectedPetId,
+                      folderName: selectedPetId != null
+                          ? petFolders.firstWhere((f) => f.id == selectedPetId).name
+                          : null,
+                    );
+                    
                     setState(() {
-                      diaryEntries.insert(0, {
-                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                        'title': titleController.text,
-                        'time': TimeOfDay.now().format(context),
-                        'date':
-                            '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-                        'category': selectedCategory,
-                        'description': descriptionController.text,
-                        'icon': _getCategoryIcon(selectedCategory),
-                        'color': _getCategoryColor(selectedCategory),
-                      });
+                      diaryEntries.insert(0, newEntry);
                     });
+                    _saveDiaryEntries();
+                    
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Đã thêm hoạt động mới'),
-                        backgroundColor: Color(0xFF66BB6A),
+                        content: Text('Đã thêm hoạt động mới', style: GoogleFonts.afacad()),
+                        backgroundColor: const Color(0xFF66BB6A),
                       ),
                     );
                   },
-                  child: Text('Thêm',
-                      style: GoogleFonts.afacad(
-                          color: Color(0xFF8E97FD),
-                          fontWeight: FontWeight.bold)),
+                  child: Text('Thêm', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
                 ),
               ],
             );
@@ -1483,7 +1135,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
       },
     );
   }
-
+  
   IconData _getCategoryIcon(String category) {
     switch (category) {
       case 'Ăn uống':
@@ -1498,7 +1150,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         return Icons.event_note;
     }
   }
-
+  
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Ăn uống':
@@ -1511,6 +1163,2167 @@ class _DiaryScreenState extends State<DiaryScreen> {
         return const Color(0xFF64B5F6);
       default:
         return const Color(0xFF8E97FD);
+    }
+  }
+  
+  void _showCreateFolderDialog() {
+    final folderNameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Tạo thư mục mới', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: folderNameController,
+          decoration: InputDecoration(
+            labelText: 'Tên thư mục',
+            labelStyle: GoogleFonts.afacad(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            hintText: 'VD: Công việc, Du lịch, ...',
+            hintStyle: GoogleFonts.afacad(color: Colors.grey),
+          ),
+          style: GoogleFonts.afacad(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (folderNameController.text.isNotEmpty) {
+                final newFolder = PetFolder(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  name: folderNameController.text,
+                  type: 'Thư mục',
+                  entryCount: 0,
+                );
+                setState(() {
+                  petFolders.add(newFolder);
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã tạo thư mục mới', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              }
+            },
+            child: Text('Tạo', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showSetPasswordDialog(DiaryEntry entry) {
+    if (entry.isLocked) {
+      // Remove password
+      setState(() {
+        entry.isLocked = false;
+        entry.password = null;
+        _saveDiaryEntries();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã mở khóa', style: GoogleFonts.afacad()),
+          backgroundColor: const Color(0xFF66BB6A),
+        ),
+      );
+      return;
+    }
+    
+    final passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Đặt mật khẩu', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Mật khẩu',
+            labelStyle: GoogleFonts.afacad(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (passwordController.text.isNotEmpty) {
+                setState(() {
+                  entry.isLocked = true;
+                  entry.password = passwordController.text;
+                  _saveDiaryEntries();
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã đặt mật khẩu', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              }
+            },
+            child: Text('Lưu', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showAddToFolderDialog(DiaryEntry entry) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Thêm vào thư mục', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.grid_view, color: Color(0xFF8E97FD)),
+              title: Text('Không có thư mục', style: GoogleFonts.afacad()),
+              onTap: () {
+                setState(() {
+                  entry.folderId = null;
+                  entry.folderName = null;
+                  _saveDiaryEntries();
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã xóa khỏi thư mục', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ...petFolders.map((folder) {
+              return ListTile(
+                leading: Icon(_getPetIcon(folder.type), color: const Color(0xFF8E97FD)),
+                title: Text(folder.name, style: GoogleFonts.afacad()),
+                subtitle: Text(folder.type, style: GoogleFonts.afacad(fontSize: 12)),
+                onTap: () {
+                  setState(() {
+                    entry.folderId = folder.id;
+                    entry.folderName = folder.name;
+                    _saveDiaryEntries();
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã thêm vào ${folder.name}', style: GoogleFonts.afacad()),
+                      backgroundColor: const Color(0xFF66BB6A),
+                    ),
+                  );
+                },
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _showColorPickerDialog(DiaryEntry entry) {
+    final colors = [
+      Colors.white,
+      const Color(0xFFFFF9E6), // Vàng nhạt
+      const Color(0xFFFFE6E6), // Hồng nhạt
+      const Color(0xFFE6F7FF), // Xanh nhạt
+      const Color(0xFFF0E6FF), // Tím nhạt
+      const Color(0xFFE6FFE6), // Xanh lá nhạt
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: colors.map((color) {
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  entry.bgColor = color;
+                  _saveDiaryEntries();
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã đổi màu nền', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              },
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
+                    width: entry.bgColor == color ? 3 : 1,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+// Detail Screen - Will continue in next part
+class DiaryDetailScreen extends StatefulWidget {
+  final DiaryEntry entry;
+  final Function(DiaryEntry) onUpdate;
+  final Function(String) onDelete;
+  final FlutterSoundRecorder recorder;
+  final bool isRecorderInitialized;
+  
+  const DiaryDetailScreen({
+    super.key,
+    required this.entry,
+    required this.onUpdate,
+    required this.onDelete,
+    required this.recorder,
+    required this.isRecorderInitialized,
+  });
+  
+  @override
+  State<DiaryDetailScreen> createState() => _DiaryDetailScreenState();
+}
+
+class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  final ImagePicker _picker = ImagePicker();
+  
+  bool _editingTitle = false;
+  bool _editingDescription = false;
+  late FocusNode _titleFocus;
+  late FocusNode _descFocus;
+  
+  FlutterSoundPlayer? _player;
+  
+  // Text formatting variables
+  bool _isBold = false;
+  bool _isItalic = false;
+  bool _isUnderline = false;
+  Color _textColor = const Color(0xFF22223B);
+  Color? _highlightColor;
+  double _fontSize = 14;
+  String _textAlign = 'left'; // left, center, right
+  String _listType = 'none'; // none, bullet, numbered, checklist
+  
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.entry.title);
+    _descriptionController = TextEditingController(text: widget.entry.description);
+    _titleFocus = FocusNode();
+    _descFocus = FocusNode();
+    _player = FlutterSoundPlayer();
+    _player!.openPlayer();
+  }
+  
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _titleFocus.dispose();
+    _descFocus.dispose();
+    _player?.closePlayer();
+    super.dispose();
+  }
+  
+  void _saveChanges() {
+    widget.entry.title = _titleController.text;
+    widget.entry.description = _descriptionController.text;
+    widget.onUpdate(widget.entry);
+  }
+  
+  void _toggleCheckbox() {
+    String text = _descriptionController.text;
+    // Find first unchecked box and check it, or vice versa
+    if (text.contains('☐')) {
+      // Toggle first unchecked to checked
+      text = text.replaceFirst('☐', '☑');
+    } else if (text.contains('☑')) {
+      // Toggle first checked to unchecked
+      text = text.replaceFirst('☑', '☐');
+    }
+    setState(() {
+      _descriptionController.text = text;
+      _saveChanges();
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        _saveChanges();
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: widget.entry.bgColor,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF22223B)),
+            onPressed: () {
+              _saveChanges();
+              Navigator.of(context).pop();
+            },
+          ),
+        title: Text(
+          'Chi tiết hoạt động',
+          style: GoogleFonts.afacad(
+            color: const Color(0xFF22223B),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Stack(
+              children: [
+                Icon(
+                  widget.entry.reminderDateTime != null 
+                      ? Icons.notifications_active 
+                      : Icons.notifications_outlined,
+                  color: widget.entry.reminderDateTime != null 
+                      ? const Color(0xFFFFB74D) 
+                      : const Color(0xFF22223B),
+                ),
+                if (widget.entry.reminderDateTime != null)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF5350),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: _setReminder,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Color(0xFF22223B)),
+            onSelected: (value) {
+              switch (value) {
+                case 'delete':
+                  _confirmDelete();
+                  break;
+                case 'copy':
+                  _createCopy();
+                  break;
+                case 'send':
+                  _sendNote();
+                  break;
+                case 'share':
+                  _shareNote();
+                  break;
+                case 'change_background':
+                  _showColorPicker();
+                  break;
+                case 'change_tag':
+                  _showChangeTagDialog();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'change_background',
+                child: Row(
+                  children: [
+                    const Icon(Icons.palette, color: Color(0xFF8E97FD)),
+                    const SizedBox(width: 12),
+                    Text('Đổi nền', style: GoogleFonts.afacad()),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete, color: Color(0xFFEF5350)),
+                    const SizedBox(width: 12),
+                    Text('Xóa', style: GoogleFonts.afacad()),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'copy',
+                child: Row(
+                  children: [
+                    const Icon(Icons.content_copy, color: Color(0xFF8E97FD)),
+                    const SizedBox(width: 12),
+                    Text('Tạo bản sao', style: GoogleFonts.afacad()),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'send',
+                child: Row(
+                  children: [
+                    const Icon(Icons.send, color: Color(0xFF8E97FD)),
+                    const SizedBox(width: 12),
+                    Text('Gửi', style: GoogleFonts.afacad()),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'share',
+                child: Row(
+                  children: [
+                    const Icon(Icons.share, color: Color(0xFF8E97FD)),
+                    const SizedBox(width: 12),
+                    Text('Chia sẻ', style: GoogleFonts.afacad()),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'change_tag',
+                child: Row(
+                  children: [
+                    const Icon(Icons.label_outline, color: Color(0xFF8E97FD)),
+                    const SizedBox(width: 12),
+                    Text('Đổi tag', style: GoogleFonts.afacad()),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      backgroundColor: widget.entry.bgColor,
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: widget.entry.bgColor,
+          border: Border(
+            top: BorderSide(color: Colors.grey[300]!, width: 1),
+          ),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.add_box_outlined, color: Color(0xFF22223B)),
+              onPressed: () => _showAddContentMenu(context),
+            ),
+            const Spacer(),
+            IconButton(
+              icon: Icon(
+                widget.entry.isPinned ? Icons.star : Icons.star_border,
+                color: widget.entry.isPinned ? const Color(0xFFFFB74D) : const Color(0xFF22223B),
+              ),
+              onPressed: () {
+                setState(() {
+                  widget.entry.isPinned = !widget.entry.isPinned;
+                  _saveChanges();
+                });
+              },
+            ),
+            IconButton(
+              icon: Icon(
+                widget.entry.isLocked ? Icons.lock : Icons.lock_open,
+                color: widget.entry.isLocked ? const Color(0xFF8E97FD) : const Color(0xFF22223B),
+              ),
+              onPressed: () => _showSetPasswordDialog(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.print_outlined, color: Color(0xFF22223B)),
+              onPressed: () => _printNote(),
+            ),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Category badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: widget.entry.color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(widget.entry.icon, size: 16, color: widget.entry.color),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.entry.category,
+                    style: GoogleFonts.afacad(
+                      color: widget.entry.color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Title
+            _editingTitle
+                ? TextField(
+                    controller: _titleController,
+                    focusNode: _titleFocus,
+                    style: GoogleFonts.afacad(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                    decoration: const InputDecoration(border: InputBorder.none),
+                    onEditingComplete: () {
+                      setState(() {
+                        _editingTitle = false;
+                        _saveChanges();
+                      });
+                    },
+                  )
+                : GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _editingTitle = true;
+                      });
+                      _titleFocus.requestFocus();
+                    },
+                    child: Text(
+                      _titleController.text,
+                      style: GoogleFonts.afacad(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF22223B),
+                      ),
+                    ),
+                  ),
+            const SizedBox(height: 12),
+            // Date & Time
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 6),
+                Text(
+                  '${widget.entry.date.split('T')[0]} • ${widget.entry.time}',
+                  style: GoogleFonts.afacad(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Text formatting toolbar (shown when editing)
+            if (_editingDescription) _buildFormattingToolbar(),
+            if (_editingDescription) const SizedBox(height: 12),
+            // Description
+            _editingDescription
+                ? Container(
+                    decoration: BoxDecoration(
+                      color: _highlightColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: _highlightColor != null 
+                        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                        : EdgeInsets.zero,
+                    child: TextField(
+                      controller: _descriptionController,
+                      focusNode: _descFocus,
+                      maxLines: null,
+                      textAlign: _textAlign == 'center' 
+                          ? TextAlign.center 
+                          : _textAlign == 'right' 
+                              ? TextAlign.right 
+                              : TextAlign.left,
+                      style: GoogleFonts.afacad(
+                        fontSize: _fontSize,
+                        color: _textColor,
+                        fontWeight: _isBold ? FontWeight.bold : FontWeight.normal,
+                        fontStyle: _isItalic ? FontStyle.italic : FontStyle.normal,
+                        decoration: _isUnderline ? TextDecoration.underline : TextDecoration.none,
+                      ),
+                      decoration: const InputDecoration(border: InputBorder.none),
+                      onChanged: (text) {
+                        // Auto-add list markers when user presses Enter
+                        if (_listType != 'none' && text.contains('\n')) {
+                          final lines = text.split('\n');
+                          if (lines.length >= 2) {
+                            final lastLine = lines[lines.length - 2];
+                            final currentLine = lines.last;
+                            
+                            // Only add marker if current line is empty or just has newline
+                            if (currentLine.isEmpty || currentLine.trim().isEmpty) {
+                              String prefix = '';
+                              
+                              // Check if we should stop auto-adding (empty line with just marker)
+                              final shouldStop = (
+                                (_listType == 'bullet' && lastLine.trim() == '•') ||
+                                (_listType == 'numbered' && RegExp(r'^\d+\.$').hasMatch(lastLine.trim())) ||
+                                (_listType == 'checklist' && (lastLine.trim() == '☐' || lastLine.trim() == '☑'))
+                              );
+                              
+                              if (shouldStop) {
+                                // Remove the empty marker line and stop list mode
+                                final newLines = lines.sublist(0, lines.length - 2);
+                                final newText = newLines.join('\n') + '\n';
+                                setState(() {
+                                  _listType = 'none';
+                                  _descriptionController.value = TextEditingValue(
+                                    text: newText,
+                                    selection: TextSelection.fromPosition(
+                                      TextPosition(offset: newText.length),
+                                    ),
+                                  );
+                                });
+                                return;
+                              }
+                              
+                              // Add appropriate marker
+                              if (_listType == 'bullet') {
+                                prefix = '• ';
+                              } else if (_listType == 'numbered') {
+                                // Extract number from last line
+                                final match = RegExp(r'^(\d+)\.').firstMatch(lastLine.trim());
+                                if (match != null) {
+                                  final num = int.parse(match.group(1)!);
+                                  prefix = '${num + 1}. ';
+                                } else {
+                                  // If no number found, start with 1
+                                  prefix = '1. ';
+                                }
+                              } else if (_listType == 'checklist') {
+                                prefix = '☐ ';
+                              }
+                              
+                              if (prefix.isNotEmpty && !currentLine.contains(prefix)) {
+                                final newText = text + prefix;
+                                _descriptionController.value = TextEditingValue(
+                                  text: newText,
+                                  selection: TextSelection.fromPosition(
+                                    TextPosition(offset: newText.length),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        }
+                      },
+                      onEditingComplete: () {
+                        setState(() {
+                          _editingDescription = false;
+                          _saveChanges();
+                        });
+                      },
+                    ),
+                  )
+                : GestureDetector(
+                    onTap: () {
+                      // If text contains checkboxes, allow toggling
+                      if (_descriptionController.text.contains('☐') || _descriptionController.text.contains('☑')) {
+                        _toggleCheckbox();
+                      } else {
+                        setState(() {
+                          _editingDescription = true;
+                        });
+                        _descFocus.requestFocus();
+                      }
+                    },
+                    onLongPress: () {
+                      setState(() {
+                        _editingDescription = true;
+                      });
+                      _descFocus.requestFocus();
+                    },
+                    child: Container(
+                      padding: _highlightColor != null 
+                          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                          : EdgeInsets.zero,
+                      decoration: BoxDecoration(
+                        color: _highlightColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _descriptionController.text,
+                        textAlign: _textAlign == 'center' 
+                            ? TextAlign.center 
+                            : _textAlign == 'right' 
+                                ? TextAlign.right 
+                                : TextAlign.left,
+                        style: GoogleFonts.afacad(
+                          fontSize: _fontSize,
+                          color: _textColor,
+                          fontWeight: _isBold ? FontWeight.bold : FontWeight.normal,
+                          fontStyle: _isItalic ? FontStyle.italic : FontStyle.normal,
+                          decoration: _isUnderline ? TextDecoration.underline : TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                  ),
+            // Audio player
+            if (widget.entry.audioPath != null) ...[
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.mic, color: Colors.orange),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Ghi âm đính kèm',
+                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.play_arrow, color: Colors.orange),
+                      onPressed: _playAudio,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Color(0xFFEF5350)),
+                      onPressed: () {
+                        setState(() {
+                          widget.entry.audioPath = null;
+                          _saveChanges();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            // Images
+            if (widget.entry.images.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Center(
+                child: Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  alignment: WrapAlignment.center,
+                  children: widget.entry.images.map((imagePath) {
+                    return GestureDetector(
+                      onLongPress: () {
+                        _showImageOptions(imagePath);
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          File(imagePath),
+                          width: 160,
+                          height: 160,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+  
+  void _showAddContentMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.notifications_active, color: Color(0xFFFFB74D)),
+              title: Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontSize: 16)),
+              subtitle: widget.entry.reminderDateTime != null 
+                  ? Text(
+                      _formatReminderTime(widget.entry.reminderDateTime!),
+                      style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey),
+                    )
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                _setReminder();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf, color: Color(0xFFEF5350)),
+              title: Text('Xuất PDF', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                _exportToPdf();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.mic, color: Color(0xFF8E97FD)),
+              title: Text('Ghi âm giọng nói', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                _showRecordingDialog();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.image, color: Color(0xFF66BB6A)),
+              title: Text('Ảnh', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                _addImage();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFF8E97FD)),
+              title: Text('Máy ảnh', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                _takePhoto();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.audiotrack, color: Color(0xFFFFB74D)),
+              title: Text('File âm thanh', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAudioFile();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.draw, color: Color(0xFF64B5F6)),
+              title: Text('Hình vẽ', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                _openDrawingCanvas();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildFormattingToolbar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            // Text size dropdown
+            PopupMenuButton<double>(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.text_fields, size: 20),
+                    const SizedBox(width: 4),
+                    Text('${_fontSize.toInt()}', style: GoogleFonts.afacad(fontSize: 12)),
+                    const Icon(Icons.arrow_drop_down, size: 16),
+                  ],
+                ),
+              ),
+              onSelected: (size) {
+                setState(() => _fontSize = size);
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 12.0, child: Text('12')),
+                const PopupMenuItem(value: 14.0, child: Text('14')),
+                const PopupMenuItem(value: 16.0, child: Text('16')),
+                const PopupMenuItem(value: 18.0, child: Text('18')),
+                const PopupMenuItem(value: 20.0, child: Text('20')),
+                const PopupMenuItem(value: 24.0, child: Text('24')),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            // Bold
+            IconButton(
+              icon: Icon(Icons.format_bold, color: _isBold ? const Color(0xFF8E97FD) : Colors.black54),
+              onPressed: () => setState(() => _isBold = !_isBold),
+              iconSize: 20,
+            ),
+            // Italic
+            IconButton(
+              icon: Icon(Icons.format_italic, color: _isItalic ? const Color(0xFF8E97FD) : Colors.black54),
+              onPressed: () => setState(() => _isItalic = !_isItalic),
+              iconSize: 20,
+            ),
+            // Underline
+            IconButton(
+              icon: Icon(Icons.format_underline, color: _isUnderline ? const Color(0xFF8E97FD) : Colors.black54),
+              onPressed: () => setState(() => _isUnderline = !_isUnderline),
+              iconSize: 20,
+            ),
+            const VerticalDivider(width: 1),
+            // Text color
+            IconButton(
+              icon: Icon(Icons.format_color_text, color: _textColor),
+              onPressed: () => _showTextColorPicker(),
+              iconSize: 20,
+            ),
+            // Highlight color  
+            IconButton(
+              icon: Icon(
+                Icons.border_color,
+                color: _highlightColor ?? Colors.black54,
+              ),
+              onPressed: () => _showHighlightColorPicker(),
+              iconSize: 20,
+            ),
+            const VerticalDivider(width: 1),
+            // Align left
+            IconButton(
+              icon: Icon(
+                Icons.format_align_left,
+                color: _textAlign == 'left' ? const Color(0xFF8E97FD) : Colors.black54,
+              ),
+              onPressed: () => setState(() => _textAlign = 'left'),
+              iconSize: 20,
+            ),
+            // Align center
+            IconButton(
+              icon: Icon(
+                Icons.format_align_center,
+                color: _textAlign == 'center' ? const Color(0xFF8E97FD) : Colors.black54,
+              ),
+              onPressed: () => setState(() => _textAlign = 'center'),
+              iconSize: 20,
+            ),
+            // Align right
+            IconButton(
+              icon: Icon(
+                Icons.format_align_right,
+                color: _textAlign == 'right' ? const Color(0xFF8E97FD) : Colors.black54,
+              ),
+              onPressed: () => setState(() => _textAlign = 'right'),
+              iconSize: 20,
+            ),
+            const VerticalDivider(width: 1),
+            // Bullet list
+            IconButton(
+              icon: Icon(
+                Icons.format_list_bulleted,
+                color: _listType == 'bullet' ? const Color(0xFF8E97FD) : Colors.black54,
+              ),
+              onPressed: () {
+                setState(() => _listType = _listType == 'bullet' ? 'none' : 'bullet');
+                if (_listType == 'bullet' && _descriptionController.text.isEmpty) {
+                  _descriptionController.text = '• ';
+                  _descriptionController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: _descriptionController.text.length),
+                  );
+                }
+              },
+              iconSize: 20,
+            ),
+            // Numbered list
+            IconButton(
+              icon: Icon(
+                Icons.format_list_numbered,
+                color: _listType == 'numbered' ? const Color(0xFF8E97FD) : Colors.black54,
+              ),
+              onPressed: () {
+                setState(() => _listType = _listType == 'numbered' ? 'none' : 'numbered');
+                if (_listType == 'numbered' && _descriptionController.text.isEmpty) {
+                  _descriptionController.text = '1. ';
+                  _descriptionController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: _descriptionController.text.length),
+                  );
+                }
+              },
+              iconSize: 20,
+            ),
+            // Checklist
+            IconButton(
+              icon: Icon(
+                Icons.checklist,
+                color: _listType == 'checklist' ? const Color(0xFF8E97FD) : Colors.black54,
+              ),
+              onPressed: () {
+                setState(() => _listType = _listType == 'checklist' ? 'none' : 'checklist');
+                if (_listType == 'checklist' && _descriptionController.text.isEmpty) {
+                  _descriptionController.text = '☐ ';
+                  _descriptionController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: _descriptionController.text.length),
+                  );
+                }
+              },
+              iconSize: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _showTextColorPicker() {
+    final colors = [
+      Colors.black,
+      const Color(0xFF22223B),
+      const Color(0xFFEF5350),
+      const Color(0xFF8E97FD),
+      const Color(0xFF66BB6A),
+      const Color(0xFFFFB74D),
+      const Color(0xFF64B5F6),
+      const Color(0xFFF06292),
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('Chọn màu chữ', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.black)),
+        content: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: colors.map((color) {
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _textColor = color;
+                });
+                Navigator.pop(context);
+              },
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _textColor == color ? const Color(0xFF8E97FD) : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+  
+  void _showHighlightColorPicker() {
+    final colors = [
+      null, // No highlight
+      const Color(0xFFFFF9E6), // Vàng nhạt
+      const Color(0xFFFFE6E6), // Hồng nhạt
+      const Color(0xFFE6F7FF), // Xanh nhạt
+      const Color(0xFFF0E6FF), // Tím nhạt
+      const Color(0xFFE6FFE6), // Xanh lá nhạt
+      const Color(0xFFFFE0B2), // Cam nhạt
+      const Color(0xFFFFCDD2), // Đỏ nhạt
+      const Color(0xFFB2DFDB), // Xanh ngọc nhạt
+      const Color(0xFFD1C4E9), // Tím đậm nhạt
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Text('Màu nền chữ', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.black)),
+            const Spacer(),
+            if (_highlightColor != null)
+              TextButton(
+                onPressed: () {
+                  setState(() => _highlightColor = null);
+                  Navigator.pop(context);
+                },
+                child: Text('Xóa', style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
+              ),
+          ],
+        ),
+        content: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: colors.map((color) {
+            return GestureDetector(
+              onTap: () {
+                setState(() => _highlightColor = color);
+                Navigator.pop(context);
+              },
+              child: Container(
+                width: 45,
+                height: 45,
+                decoration: BoxDecoration(
+                  color: color ?? Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _highlightColor == color 
+                        ? const Color(0xFF8E97FD) 
+                        : (color == null ? Colors.grey : Colors.grey[300]!),
+                    width: _highlightColor == color ? 3 : 1,
+                  ),
+                ),
+                child: color == null 
+                    ? const Icon(Icons.clear, color: Colors.grey, size: 24)
+                    : null,
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _takePhoto() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+    if (image != null) {
+      setState(() {
+        widget.entry.images = [...widget.entry.images, image.path];
+        _saveChanges();
+      });
+    }
+  }
+  
+  Future<void> _addImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        widget.entry.images = [...widget.entry.images, image.path];
+        _saveChanges();
+      });
+    }
+  }
+  
+  Future<void> _playAudio() async {
+    try {
+      if (widget.entry.audioPath != null && _player != null) {
+        // Check if file exists
+        final file = File(widget.entry.audioPath!);
+        if (await file.exists()) {
+          await _player!.startPlayer(fromURI: widget.entry.audioPath);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đang phát ghi âm...', style: GoogleFonts.afacad()),
+              backgroundColor: const Color(0xFF66BB6A),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Không tìm thấy file ghi âm', style: GoogleFonts.afacad()),
+              backgroundColor: const Color(0xFFEF5350),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error playing audio: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi phát ghi âm: $e', style: GoogleFonts.afacad()),
+          backgroundColor: const Color(0xFFEF5350),
+        ),
+      );
+    }
+  }
+  
+  // Export note to PDF
+  Future<void> _exportToPdf() async {
+    try {
+      // Show dialog to confirm PDF export
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: Row(
+            children: [
+              const Icon(Icons.picture_as_pdf, color: Color(0xFFEF5350)),
+              const SizedBox(width: 12),
+              Text('Xuất PDF', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            'Bạn có muốn xuất ghi chú này thành file PDF?',
+            style: GoogleFonts.afacad(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF5350),
+              ),
+              child: Text('Xuất PDF', style: GoogleFonts.afacad(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirmed == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                const SizedBox(width: 12),
+                Text('Đang tạo file PDF...', style: GoogleFonts.afacad()),
+              ],
+            ),
+            backgroundColor: const Color(0xFF8E97FD),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        
+        // TODO: Implement actual PDF generation with pdf package
+        await Future.delayed(const Duration(seconds: 2));
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF đã được lưu vào thư mục Downloads', style: GoogleFonts.afacad()),
+            backgroundColor: const Color(0xFF66BB6A),
+            action: SnackBarAction(
+              label: 'Xem',
+              textColor: Colors.white,
+              onPressed: () {
+                // Open PDF viewer
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error exporting PDF: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi xuất PDF', style: GoogleFonts.afacad()),
+          backgroundColor: const Color(0xFFEF5350),
+        ),
+      );
+    }
+  }
+  
+  // Show recording dialog with stop/save buttons
+  void _showRecordingDialog() {
+    bool isRecording = false;
+    String? recordedPath;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                isRecording ? Icons.mic : Icons.mic_none,
+                color: isRecording ? const Color(0xFFEF5350) : const Color(0xFF8E97FD),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isRecording ? 'Đang ghi âm...' : 'Ghi âm giọng nói',
+                style: GoogleFonts.afacad(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isRecording)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF5350).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.mic,
+                    size: 48,
+                    color: Color(0xFFEF5350),
+                  ),
+                )
+              else
+                const Icon(Icons.mic_none, size: 64, color: Color(0xFF8E97FD)),
+              const SizedBox(height: 16),
+              Text(
+                isRecording ? 'Đang ghi âm...' : 'Nhấn nút bắt đầu để ghi âm',
+                style: GoogleFonts.afacad(color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actions: [
+            if (!isRecording) ...[
+              // Chỉ có nút Bắt đầu, không có nút Hủy
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (widget.isRecorderInitialized) {
+                      final dir = await getApplicationDocumentsDirectory();
+                      final path = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
+                      await widget.recorder.startRecorder(toFile: path);
+                      setDialogState(() {
+                        isRecording = true;
+                        recordedPath = path;
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E97FD),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.fiber_manual_record, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text('Bắt đầu', style: GoogleFonts.afacad(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ] else ...[ 
+              Expanded(
+                flex: 1,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    await widget.recorder.stopRecorder();
+                    Navigator.pop(context);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.grey, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.close, color: Colors.grey, size: 18),
+                      const SizedBox(width: 6),
+                      Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 1,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await widget.recorder.stopRecorder();
+                    if (recordedPath != null) {
+                      setState(() {
+                        widget.entry.audioPath = recordedPath;
+                        _saveChanges();
+                      });
+                    }
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Đã lưu ghi âm', style: GoogleFonts.afacad()),
+                        backgroundColor: const Color(0xFF66BB6A),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF66BB6A),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text('Lưu', style: GoogleFonts.afacad(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Pick audio file from device  
+  Future<void> _pickAudioFile() async {
+    try {
+      // Show dialog with options for audio file
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: Row(
+            children: [
+              const Icon(Icons.audiotrack, color: Color(0xFFFFB74D)),
+              const SizedBox(width: 12),
+              Text('Chọn file âm thanh', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.folder, color: Color(0xFF8E97FD)),
+                title: Text('Từ thư mục', style: GoogleFonts.afacad()),
+                subtitle: Text('Chọn file âm thanh từ thiết bị', style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey)),
+                onTap: () async {
+                  Navigator.pop(context);
+                  // TODO: Implement file_picker package
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đang mở trình chọn file...', style: GoogleFonts.afacad()),
+                      backgroundColor: const Color(0xFF8E97FD),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.cloud_download, color: Color(0xFF64B5F6)),
+                title: Text('Từ đám mây', style: GoogleFonts.afacad()),
+                subtitle: Text('Google Drive, Dropbox...', style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey)),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Tính năng đang phát triển', style: GoogleFonts.afacad()),
+                      backgroundColor: const Color(0xFF8E97FD),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      print('❌ Error picking audio file: $e');
+    }
+  }
+  
+  // Open drawing canvas
+  Future<void> _openDrawingCanvas() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DrawingCanvas(),
+      ),
+    );
+    
+    if (result != null && result is String) {
+      setState(() {
+        widget.entry.images.add(result);
+        _saveChanges();
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã thêm hình vẽ', style: GoogleFonts.afacad()),
+          backgroundColor: const Color(0xFF66BB6A),
+        ),
+      );
+    }
+  }
+  
+  void _showColorPicker() {
+    final colors = [
+      Colors.white,
+      const Color(0xFFFFF9E6), // Vàng nhạt
+      const Color(0xFFFFE6E6), // Hồng nhạt
+      const Color(0xFFE6F7FF), // Xanh nhạt
+      const Color(0xFFF0E6FF), // Tím nhạt
+      const Color(0xFFE6FFE6), // Xanh lá nhạt
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: colors.map((color) {
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  widget.entry.bgColor = color;
+                  _saveChanges();
+                });
+                Navigator.pop(context);
+              },
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+  
+  void _showSetPasswordDialog() {
+    if (widget.entry.isLocked) {
+      // Remove password
+      setState(() {
+        widget.entry.isLocked = false;
+        widget.entry.password = null;
+        _saveChanges();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã mở khóa', style: GoogleFonts.afacad()),
+          backgroundColor: const Color(0xFF66BB6A),
+        ),
+      );
+      return;
+    }
+    
+    final passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Đặt mật khẩu', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Mật khẩu',
+            labelStyle: GoogleFonts.afacad(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (passwordController.text.isNotEmpty) {
+                setState(() {
+                  widget.entry.isLocked = true;
+                  widget.entry.password = passwordController.text;
+                  _saveChanges();
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã đặt mật khẩu', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              }
+            },
+            child: Text('Lưu', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Xóa hoạt động', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Hoạt động sẽ được chuyển vào thùng rác và lưu trữ trong 30 ngày.',
+          style: GoogleFonts.afacad(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              widget.onDelete(widget.entry.id);
+              Navigator.pop(context);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đã chuyển vào thùng rác', style: GoogleFonts.afacad()),
+                  backgroundColor: const Color(0xFF66BB6A),
+                ),
+              );
+            },
+            child: Text('Xóa', style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Print note
+  void _printNote() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('In ghi chú', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Text('Bạn muốn in ghi chú này?', style: GoogleFonts.afacad()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đang chuẩn bị in...', style: GoogleFonts.afacad()),
+                  backgroundColor: const Color(0xFF8E97FD),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E97FD)),
+            child: Text('In', style: GoogleFonts.afacad(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Create copy
+  void _createCopy() {
+    final newEntry = DiaryEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: '${widget.entry.title} (Bản sao)',
+      description: widget.entry.description,
+      category: widget.entry.category,
+      date: DateTime.now().toIso8601String(),
+      time: TimeOfDay.now().format(context),
+      color: widget.entry.color,
+      bgColor: widget.entry.bgColor,
+      icon: widget.entry.icon,
+      images: List.from(widget.entry.images),
+      audioPath: widget.entry.audioPath,
+      isPinned: false,
+      isLocked: false,
+      folderId: widget.entry.folderId,
+      folderName: widget.entry.folderName,
+    );
+    
+    widget.onUpdate(newEntry);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã tạo bản sao', style: GoogleFonts.afacad()),
+        backgroundColor: const Color(0xFF66BB6A),
+      ),
+    );
+  }
+  
+  // Send note
+  void _sendNote() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.email, color: Color(0xFF8E97FD)),
+              title: Text('Gửi qua Email', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Gửi qua Email', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF8E97FD),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.message, color: Color(0xFF66BB6A)),
+              title: Text('Gửi qua SMS', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Gửi qua SMS', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Share note
+  void _shareNote() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
+              title: Text('Facebook', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Chia sẻ lên Facebook', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF1877F2),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link, color: Color(0xFF8E97FD)),
+              title: Text('Sao chép liên kết', style: GoogleFonts.afacad(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã sao chép liên kết', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Show change tag dialog
+  void _showChangeTagDialog() {
+    final categories = ['Ăn uống', 'Sức khỏe', 'Vui chơi', 'Tắm rửa'];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('Đổi tag', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: categories.map((category) {
+            final isSelected = widget.entry.category == category;
+            return ListTile(
+              leading: Icon(
+                _getCategoryIcon(category),
+                color: _getCategoryColor(category),
+              ),
+              title: Text(
+                category,
+                style: GoogleFonts.afacad(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              trailing: isSelected ? const Icon(Icons.check, color: Color(0xFF8E97FD)) : null,
+              onTap: () {
+                setState(() {
+                  widget.entry.category = category;
+                  widget.entry.icon = _getCategoryIcon(category);
+                  widget.entry.color = _getCategoryColor(category);
+                  _saveChanges();
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã đổi tag thành $category', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+  
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Ăn uống':
+        return Icons.restaurant;
+      case 'Sức khỏe':
+        return Icons.medical_services;
+      case 'Vui chơi':
+        return Icons.sports_soccer;
+      case 'Tắm rửa':
+        return Icons.bathroom;
+      default:
+        return Icons.note;
+    }
+  }
+  
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Ăn uống':
+        return const Color(0xFFFFB74D);
+      case 'Sức khỏe':
+        return const Color(0xFFEF5350);
+      case 'Vui chơi':
+        return const Color(0xFF66BB6A);
+      case 'Tắm rửa':
+        return const Color(0xFF64B5F6);
+      default:
+        return const Color(0xFF8E97FD);
+    }
+  }
+  
+  // Show image options (delete or edit)
+  void _showImageOptions(String imagePath) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.delete, color: Color(0xFFEF5350)),
+                title: Text('Xóa hình', style: GoogleFonts.afacad(fontSize: 16)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteImage(imagePath);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.open_in_new, color: Color(0xFF8E97FD)),
+                title: Text('Xem toàn màn hình', style: GoogleFonts.afacad(fontSize: 16)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showFullScreenImage(imagePath);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  // Confirm delete image
+  void _confirmDeleteImage(String imagePath) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text(
+            'Xóa hình ảnh?',
+            style: GoogleFonts.afacad(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Bạn có chắc chắn muốn xóa hình ảnh này?',
+            style: GoogleFonts.afacad(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  widget.entry.images.remove(imagePath);
+                  _saveChanges();
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã xóa hình ảnh', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFFEF5350),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF5350),
+              ),
+              child: Text('Xóa', style: GoogleFonts.afacad(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  // Show full screen image
+  void _showFullScreenImage(String imagePath) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  child: Image.file(
+                    File(imagePath),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 16,
+                right: 16,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  // Set reminder for note
+  void _setReminder() {
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay selectedTime = TimeOfDay.now();
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: Row(
+            children: [
+              const Icon(Icons.notifications_active, color: Color(0xFFFFB74D)),
+              const SizedBox(width: 12),
+              Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Date picker
+              ListTile(
+                leading: const Icon(Icons.calendar_today, color: Color(0xFF8E97FD)),
+                title: Text('Ngày', style: GoogleFonts.afacad()),
+                subtitle: Text(
+                  '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                  style: GoogleFonts.afacad(color: Colors.grey),
+                ),
+                onTap: () async {
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setDialogState(() {
+                      selectedDate = picked;
+                    });
+                  }
+                },
+              ),
+              // Time picker
+              ListTile(
+                leading: const Icon(Icons.access_time, color: Color(0xFF66BB6A)),
+                title: Text('Giờ', style: GoogleFonts.afacad()),
+                subtitle: Text(
+                  '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                  style: GoogleFonts.afacad(color: Colors.grey),
+                ),
+                onTap: () async {
+                  final TimeOfDay? picked = await showTimePicker(
+                    context: context,
+                    initialTime: selectedTime,
+                  );
+                  if (picked != null) {
+                    setDialogState(() {
+                      selectedTime = picked;
+                    });
+                  }
+                },
+              ),
+              // Quick options
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _buildQuickReminderChip('1 giờ', const Duration(hours: 1), setDialogState, selectedDate, selectedTime),
+                  _buildQuickReminderChip('1 ngày', const Duration(days: 1), setDialogState, selectedDate, selectedTime),
+                  _buildQuickReminderChip('1 tuần', const Duration(days: 7), setDialogState, selectedDate, selectedTime),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            if (widget.entry.reminderDateTime != null)
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    widget.entry.reminderDateTime = null;
+                    _saveChanges();
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã xóa nhắc nhở', style: GoogleFonts.afacad()),
+                      backgroundColor: const Color(0xFFEF5350),
+                    ),
+                  );
+                },
+                child: Text('Xóa', style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final reminderDateTime = DateTime(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  selectedTime.hour,
+                  selectedTime.minute,
+                );
+                
+                setState(() {
+                  widget.entry.reminderDateTime = reminderDateTime.toIso8601String();
+                  _saveChanges();
+                });
+                
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Đã đặt nhắc nhở lúc ${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')} ngày ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                      style: GoogleFonts.afacad(),
+                    ),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB74D),
+              ),
+              child: Text('Lưu', style: GoogleFonts.afacad(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Build quick reminder chip
+  Widget _buildQuickReminderChip(String label, Duration duration, StateSetter setDialogState, DateTime selectedDate, TimeOfDay selectedTime) {
+    return ActionChip(
+      label: Text(label, style: GoogleFonts.afacad(fontSize: 12)),
+      backgroundColor: const Color(0xFF8E97FD).withOpacity(0.1),
+      side: const BorderSide(color: Color(0xFF8E97FD)),
+      onPressed: () {
+        final now = DateTime.now();
+        final newDateTime = now.add(duration);
+        setDialogState(() {
+          selectedDate = newDateTime;
+          selectedTime = TimeOfDay.fromDateTime(newDateTime);
+        });
+      },
+    );
+  }
+  
+  // Format reminder time
+  String _formatReminderTime(String isoString) {
+    try {
+      final dateTime = DateTime.parse(isoString);
+      final now = DateTime.now();
+      final difference = dateTime.difference(now);
+      
+      if (difference.isNegative) {
+        return 'Đã qua';
+      } else if (difference.inMinutes < 60) {
+        return 'Còn ${difference.inMinutes} phút';
+      } else if (difference.inHours < 24) {
+        return 'Còn ${difference.inHours} giờ';
+      } else {
+        final days = difference.inDays;
+        return 'Còn $days ngày';
+      }
+    } catch (e) {
+      return '';
     }
   }
 }

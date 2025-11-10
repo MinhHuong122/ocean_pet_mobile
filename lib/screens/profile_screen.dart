@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ocean_pet/services/AuthService.dart';
+import 'package:ocean_pet/services/FirebaseService.dart';
 import './custom_bottom_nav.dart';
 import 'login_screen.dart';
 import 'profile_detail_screen.dart';
 import 'pet_management_screen.dart';
+import 'help_support_screen.dart';
+import 'about_app_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,11 +23,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String userEmail = 'mochi@oceanpet.com';
   String? avatarUrl;
   bool isLoading = true;
+  
+  // Stats data
+  int petCount = 0;
+  int activityCount = 0;
+  int reminderCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
+    _loadStats();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload stats khi quay lại màn hình
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    print('🔄 Loading stats...');
+    
+    int pets = 0;
+    int activities = 0;
+    int reminders = 0;
+    
+    // Load pet count
+    try {
+      final petList = await FirebaseService.getPets();
+      pets = petList.length;
+      print('🐾 Pets loaded: $pets');
+    } catch (e) {
+      print('❌ Error loading pets: $e');
+    }
+    
+    // Load activity count (appointments + diary entries)
+    try {
+      await FirebaseService.getUserAppointments().first.then((appointments) {
+        activities = appointments.length;
+        print('📅 Activities loaded: $activities');
+      });
+    } catch (e) {
+      print('❌ Error loading activities: $e');
+    }
+    
+    // Load reminder count (active notifications)
+    try {
+      await FirebaseService.getUserNotifications().first.then((notifications) {
+        reminders = notifications.where((n) => n['is_read'] == false).length;
+        print('🔔 Reminders loaded: $reminders');
+      });
+    } catch (e) {
+      print('❌ Error loading reminders: $e');
+    }
+    
+    // Update state với dữ liệu đã load được
+    if (mounted) {
+      setState(() {
+        petCount = pets;
+        activityCount = activities;
+        reminderCount = reminders;
+      });
+      print('✅ Stats updated: Pets=$petCount, Activities=$activityCount, Reminders=$reminderCount');
+    }
   }
 
   Future<void> _loadUserInfo() async {
@@ -172,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Expanded(
                       child: _buildStatCard(
-                        '3',
+                        '$petCount',
                         'Thú cưng',
                         Icons.pets,
                         const Color(0xFFFFB74D),
@@ -181,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        '24',
+                        '$activityCount',
                         'Hoạt động',
                         Icons.event_note,
                         const Color(0xFF64B5F6),
@@ -190,7 +253,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        '5',
+                        '$reminderCount',
                         'Nhắc nhở',
                         Icons.notifications_active,
                         const Color(0xFF66BB6A),
@@ -270,13 +333,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Icons.help_outline,
                   'Trợ giúp & Hỗ trợ',
                   'Câu hỏi thường gặp và liên hệ',
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpSupportScreen(),
+                      ),
+                    );
+                  },
                 ),
                 _buildMenuOption(
                   Icons.info_outline,
                   'Về ứng dụng',
                   'Phiên bản 1.0.0',
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AboutAppScreen(),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 

@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import './custom_bottom_nav.dart'; // Correct import for widgets directory
+import './ai_chat_screen.dart';
+import './contact_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({Key? key}) : super(key: key);
@@ -178,7 +180,12 @@ class HomeScreen extends StatelessWidget {
                     title: const Text('Hỗ trợ nhanh với AI'),
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: Thêm logic hỗ trợ AI
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AIChatScreen(),
+                        ),
+                      );
                     },
                   ),
                   ListTile(
@@ -186,7 +193,12 @@ class HomeScreen extends StatelessWidget {
                     title: const Text('Liên lạc'),
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: Thêm logic liên lạc
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ContactScreen(),
+                        ),
+                      );
                     },
                   ),
                 ],

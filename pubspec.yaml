@@ -50,6 +50,7 @@ dependencies:
   # HTTP requests
   http: ^1.1.2
   google_fonts: ^6.3.0
+  url_launcher: ^6.2.5
   # uni_links: ^0.5.1 (đã thay bằng app_links)
   app_links: ^3.0.0
   
@@ -58,6 +59,10 @@ dependencies:
   
   # Image picker
   image_picker: ^1.0.7
+  
+  # Audio recorder
+  flutter_sound: ^9.2.13
+  path_provider: ^2.1.2
   
   # Firebase (updated to latest stable versions compatible with Flutter 3.35.7)
   firebase_core: ^3.6.0

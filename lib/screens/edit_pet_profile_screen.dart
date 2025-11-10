@@ -412,7 +412,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
 
               // Pet type dropdown
               DropdownButtonFormField<String>(
-                value: _petType,
+                initialValue: _petType,
                 decoration: InputDecoration(
                   labelText: 'Loại thú cưng *',
                   labelStyle: GoogleFonts.afacad(),

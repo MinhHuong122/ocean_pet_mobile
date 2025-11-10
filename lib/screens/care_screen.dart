@@ -1,6 +1,7 @@
 // lib/screens/care_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import './custom_bottom_nav.dart';
 
 class CareScreen extends StatefulWidget {
@@ -43,79 +44,52 @@ class _CareScreenState extends State<CareScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ...existing code...
+                const SizedBox(height: 16),
 
-                // Pet Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF8E97FD),
-                        const Color(0xFF8E97FD).withOpacity(0.7),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.pets,
-                          size: 40,
-                          color: const Color(0xFF8E97FD),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Mochi',
-                              style: GoogleFonts.afacad(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              'Mèo Ba Tư • 2 tuổi',
-                              style: GoogleFonts.afacad(
-                                fontSize: 16,
-                                color: Colors.white.withOpacity(0.9),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(Icons.favorite,
-                                    color: Colors.white, size: 16),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Sức khỏe tốt',
-                                  style: GoogleFonts.afacad(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ],
+                // Upcoming Appointments (moved to top)
+                Text(
+                  'Lịch hẹn sắp tới',
+                  style: GoogleFonts.afacad(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF22223B),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                if (appointments.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.calendar_today,
+                              size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Chưa có lịch hẹn nào',
+                            style: GoogleFonts.afacad(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ...appointments.map((appointment) => _buildAppointmentCard(
+                        appointment['title'],
+                        '${appointment['date']} - ${appointment['time']}',
+                        appointment['location'],
+                        appointment['icon'],
+                        appointment['color'],
+                      )),
+
                 const SizedBox(height: 24),
 
                 // Care Services
@@ -184,33 +158,6 @@ class _CareScreenState extends State<CareScreen> {
                       () => _showEmergencyDialog(),
                     ),
                   ],
-                ),
-                const SizedBox(height: 24),
-
-                // Upcoming Appointments
-                Text(
-                  'Lịch hẹn sắp tới',
-                  style: GoogleFonts.afacad(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF22223B),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                _buildAppointmentCard(
-                  'Khám sức khỏe định kỳ',
-                  '20/09/2025 - 10:00 AM',
-                  'Phòng khám Pet Care',
-                  Icons.medical_services,
-                  const Color(0xFFEF5350),
-                ),
-                _buildAppointmentCard(
-                  'Tiêm phòng dại ứng',
-                  '25/09/2025 - 2:00 PM',
-                  'Phòng khám Pet Care',
-                  Icons.vaccines,
-                  const Color(0xFF66BB6A),
                 ),
                 const SizedBox(height: 80),
               ],
@@ -565,6 +512,29 @@ class _CareScreenState extends State<CareScreen> {
   }
 
   void _showTrainingDialog() {
+    final List<Map<String, String>> trainingVideos = [
+      {
+        'title': 'Huấn luyện cơ bản cho chó',
+        'url': 'https://www.youtube.com/watch?v=vwGr1GAQ7Xg&list=PLiHl72tzNCwZ0TBnALdWRii5qZ9rFGPb8',
+        'description': 'Video hướng dẫn huấn luyện cơ bản',
+      },
+      {
+        'title': 'Huấn luyện chó nghe lời',
+        'url': 'https://www.youtube.com/watch?v=4dbzPoB7AKk',
+        'description': 'Dạy chó nghe lời chủ',
+      },
+      {
+        'title': 'Huấn luyện mèo',
+        'url': 'https://www.youtube.com/watch?v=T0xzdu-wTM0',
+        'description': 'Cách huấn luyện mèo cưng',
+      },
+      {
+        'title': 'Huấn luyện chó đi vệ sinh đúng chỗ',
+        'url': 'https://www.youtube.com/watch?v=qKnMxZjn6fI',
+        'description': 'Dạy chó đi vệ sinh',
+      },
+    ];
+
     showDialog(
       context: context,
       builder: (context) {
@@ -573,24 +543,52 @@ class _CareScreenState extends State<CareScreen> {
             children: [
               Icon(Icons.school, color: Color(0xFFAB47BC)),
               const SizedBox(width: 12),
-              Text('Khóa học huấn luyện',
-                  style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text('Video huấn luyện',
+                    style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Chức năng huấn luyện đang được phát triển.',
-                style: GoogleFonts.afacad(fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Sẽ bao gồm:\n• Huấn luyện cơ bản\n• Huấn luyện nâng cao\n• Video hướng dẫn\n• Lịch tập luyện',
-                style:
-                    GoogleFonts.afacad(fontSize: 14, color: Colors.grey[600]),
-              ),
-            ],
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: trainingVideos.length,
+              itemBuilder: (context, index) {
+                final video = trainingVideos[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFAB47BC).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFAB47BC).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.play_circle_outline,
+                          color: Color(0xFFAB47BC)),
+                    ),
+                    title: Text(
+                      video['title']!,
+                      style: GoogleFonts.afacad(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: Text(
+                      video['description']!,
+                      style: GoogleFonts.afacad(fontSize: 12),
+                    ),
+                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => _openUrl(video['url']!),
+                  ),
+                );
+              },
+            ),
           ),
           actions: [
             TextButton(
@@ -605,45 +603,134 @@ class _CareScreenState extends State<CareScreen> {
   }
 
   void _showEmergencyDialog() {
+    final List<Map<String, String>> emergencyContacts = [
+      {
+        'title': 'Ngược đãi động vật',
+        'phone': '911',
+        'description': 'Báo cáo ngược đãi thú cưng',
+        'icon': 'warning',
+      },
+      {
+        'title': 'Thú cưng bị bệnh',
+        'phone': '1900299982',
+        'description': 'Tư vấn khẩn cấp 24/7',
+        'icon': 'medical',
+      },
+      {
+        'title': 'Phòng khám Pet Care',
+        'phone': '0123456789',
+        'description': 'Hotline khẩn cấp',
+        'icon': 'hospital',
+      },
+    ];
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.local_hospital, color: Color(0xFFFF5252)),
+              Icon(Icons.local_hospital, color: Colors.red),
               const SizedBox(width: 12),
-              Text('Khẩn cấp 24/7',
-                  style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text('Liên hệ khẩn cấp',
+                    style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Đường dây nóng khẩn cấp:',
-                style: GoogleFonts.afacad(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Emergency Contacts
+                  ...emergencyContacts.map((contact) {
+                    IconData iconData = contact['icon'] == 'warning'
+                        ? Icons.warning
+                        : contact['icon'] == 'medical'
+                            ? Icons.medical_services
+                            : Icons.local_hospital;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(iconData, color: Colors.red),
+                        ),
+                        title: Text(
+                          contact['title']!,
+                          style: GoogleFonts.afacad(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              contact['phone']!,
+                              style: GoogleFonts.afacad(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            Text(
+                              contact['description']!,
+                              style: GoogleFonts.afacad(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        trailing: Icon(Icons.phone, color: Colors.red),
+                        onTap: () => _makePhoneCall(contact['phone']!),
+                      ),
+                    );
+                  }).toList(),
+                  const SizedBox(height: 16),
+                  // Rescue Center Link
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Color(0xFF66BB6A).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF66BB6A).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.pets, color: Color(0xFF66BB6A)),
+                      ),
+                      title: Text(
+                        'Trạm cứu hộ chó mèo',
+                        style: GoogleFonts.afacad(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Danh sách trạm cứu hộ',
+                        style: GoogleFonts.afacad(fontSize: 12),
+                      ),
+                      trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => _openUrl(
+                          'https://www.petmart.vn/tram-cuu-ho-cho-meo?srsltid=AfmBOopECBq1V0sdrFHl_bjok8Vz1QdLRBA-Nzi5f2KE-YFI2i0gYQKx#Tram_cuu_ho_cho_meo_Ha_Noi'),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildEmergencyContact('Phòng khám Pet Care', '0123-456-789'),
-              _buildEmergencyContact('Bác sĩ thú y 24/7', '0987-654-321'),
-              _buildEmergencyContact('Cấp cứu thú cưng', '0911-222-333'),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Color(0xFFFF5252).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '⚠️ Trong trường hợp khẩn cấp, vui lòng gọi ngay và đưa thú cưng đến phòng khám gần nhất!',
-                  style: GoogleFonts.afacad(
-                      fontSize: 13, color: Color(0xFFFF5252)),
-                ),
-              ),
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -657,28 +744,58 @@ class _CareScreenState extends State<CareScreen> {
     );
   }
 
-  Widget _buildEmergencyContact(String name, String phone) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name,
-                  style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-              Text(phone, style: GoogleFonts.afacad(color: Colors.grey[600])),
-            ],
+  // Open URL in external browser
+  Future<void> _openUrl(String urlString) async {
+    try {
+      final Uri url = Uri.parse(urlString);
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Không thể mở liên kết',
+                  style: GoogleFonts.afacad()),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e', style: GoogleFonts.afacad()),
+            backgroundColor: Colors.red,
           ),
-          Icon(Icons.phone, color: Color(0xFF66BB6A)),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
+
+  // Make phone call
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    try {
+      final Uri telUrl = Uri.parse('tel:$phoneNumber');
+      if (!await launchUrl(telUrl)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Không thể gọi điện',
+                  style: GoogleFonts.afacad()),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e', style: GoogleFonts.afacad()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
 }

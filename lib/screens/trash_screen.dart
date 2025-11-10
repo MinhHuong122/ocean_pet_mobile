@@ -79,6 +79,10 @@ class _TrashScreenState extends State<TrashScreen> {
                 final daysLeft =
                     30 - DateTime.now().difference(deletedAt).inDays;
 
+                // Convert color and icon from JSON
+                final color = Color(entry['colorValue'] ?? 0xFF8E97FD);
+                final icon = IconData(entry['iconCode'] ?? 0xe3af, fontFamily: 'MaterialIcons');
+                
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
@@ -89,12 +93,12 @@ class _TrashScreenState extends State<TrashScreen> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: entry['color'].withOpacity(0.18),
+                        color: color.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
-                        entry['icon'],
-                        color: entry['color'],
+                        icon,
+                        color: color,
                         size: 20,
                       ),
                     ),

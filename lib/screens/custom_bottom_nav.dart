@@ -1,7 +1,7 @@
 // lib/widgets/custom_bottom_nav.dart
 import 'package:flutter/material.dart';
 import './home_screen.dart';
-import './diary_screen.dart';
+import 'diary_screen.dart';
 import './care_screen.dart';
 import './profile_screen.dart' as profile_screen;
 
