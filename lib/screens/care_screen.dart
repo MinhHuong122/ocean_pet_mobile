@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import './custom_bottom_nav.dart';
+import './appointment_detail_screen.dart';
+import './nutrition_screen.dart';
+import './training_video_screen.dart';
 
 class CareScreen extends StatefulWidget {
   const CareScreen({super.key});
@@ -82,12 +85,15 @@ class _CareScreenState extends State<CareScreen> {
                     ),
                   )
                 else
-                  ...appointments.map((appointment) => _buildAppointmentCard(
-                        appointment['title'],
-                        '${appointment['date']} - ${appointment['time']}',
-                        appointment['location'],
-                        appointment['icon'],
-                        appointment['color'],
+                  ...appointments.map((appointment) => GestureDetector(
+                        onTap: () => _openAppointmentDetail(appointment),
+                        child: _buildAppointmentCard(
+                          appointment['title'],
+                          '${appointment['date']} - ${appointment['time']}',
+                          appointment['location'],
+                          appointment['icon'],
+                          appointment['color'],
+                        ),
                       )),
 
                 const SizedBox(height: 24),
@@ -317,288 +323,73 @@ class _CareScreenState extends State<CareScreen> {
     );
   }
 
-  void _showBookingDialog(String serviceName, IconData icon, Color color) {
-    DateTime selectedDate = DateTime.now();
-    TimeOfDay selectedTime = TimeOfDay.now();
-    final locationController =
-        TextEditingController(text: 'Phòng khám Pet Care');
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  Icon(icon, color: color),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Đặt lịch $serviceName',
-                    style: GoogleFonts.afacad(
-                        fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                ],
+  void _openAppointmentDetail(Map<String, dynamic> appointment) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AppointmentDetailScreen(
+          appointment: appointment,
+          onSave: (updatedAppointment) {
+            setState(() {
+              final index = appointments.indexWhere((a) => a['id'] == updatedAppointment['id']);
+              if (index != -1) {
+                appointments[index] = updatedAppointment;
+              }
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Đã cập nhật lịch hẹn!',
+                  style: GoogleFonts.afacad(),
+                ),
+                backgroundColor: const Color(0xFF66BB6A),
               ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Chọn ngày:',
-                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime.now(),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 365)),
-                        );
-                        if (picked != null) {
-                          setDialogState(() {
-                            selectedDate = picked;
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_today, color: color),
-                            const SizedBox(width: 12),
-                            Text(
-                              '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                              style: GoogleFonts.afacad(fontSize: 16),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('Chọn giờ:',
-                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: () async {
-                        final TimeOfDay? picked = await showTimePicker(
-                          context: context,
-                          initialTime: selectedTime,
-                        );
-                        if (picked != null) {
-                          setDialogState(() {
-                            selectedTime = picked;
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.access_time, color: color),
-                            const SizedBox(width: 12),
-                            Text(
-                              selectedTime.format(context),
-                              style: GoogleFonts.afacad(fontSize: 16),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('Địa điểm:',
-                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: locationController,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        prefixIcon: Icon(Icons.location_on, color: color),
-                      ),
-                      style: GoogleFonts.afacad(),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Hủy',
-                      style: GoogleFonts.afacad(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      appointments.add({
-                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                        'title': serviceName,
-                        'date':
-                            '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                        'time': selectedTime.format(context),
-                        'location': locationController.text,
-                        'icon': icon,
-                        'color': color,
-                      });
-                    });
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Đã đặt lịch $serviceName thành công!'),
-                        backgroundColor: const Color(0xFF66BB6A),
-                      ),
-                    );
-                  },
-                  child: Text('Đặt lịch',
-                      style: GoogleFonts.afacad(
-                          color: color, fontWeight: FontWeight.bold)),
-                ),
-              ],
             );
           },
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  void _showBookingDialog(String serviceName, IconData icon, Color color) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AppointmentDetailScreen(
+          onSave: (appointment) {
+            setState(() {
+              appointments.add(appointment);
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Đã đặt lịch thành công!',
+                  style: GoogleFonts.afacad(),
+                ),
+                backgroundColor: const Color(0xFF66BB6A),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
   void _showNutritionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.restaurant, color: Color(0xFFFFB74D)),
-              const SizedBox(width: 12),
-              Text('Kế hoạch dinh dưỡng',
-                  style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Chức năng kế hoạch dinh dưỡng đang được phát triển.',
-                style: GoogleFonts.afacad(fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Sẽ bao gồm:\n• Tư vấn thức ăn\n• Lịch cho ăn\n• Theo dõi cân nặng\n• Dinh dưỡng theo độ tuổi',
-                style:
-                    GoogleFonts.afacad(fontSize: 14, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Đóng',
-                  style: GoogleFonts.afacad(color: Color(0xFF8E97FD))),
-            ),
-          ],
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NutritionScreen(),
+      ),
     );
   }
 
   void _showTrainingDialog() {
-    final List<Map<String, String>> trainingVideos = [
-      {
-        'title': 'Huấn luyện cơ bản cho chó',
-        'url': 'https://www.youtube.com/watch?v=vwGr1GAQ7Xg&list=PLiHl72tzNCwZ0TBnALdWRii5qZ9rFGPb8',
-        'description': 'Video hướng dẫn huấn luyện cơ bản',
-      },
-      {
-        'title': 'Huấn luyện chó nghe lời',
-        'url': 'https://www.youtube.com/watch?v=4dbzPoB7AKk',
-        'description': 'Dạy chó nghe lời chủ',
-      },
-      {
-        'title': 'Huấn luyện mèo',
-        'url': 'https://www.youtube.com/watch?v=T0xzdu-wTM0',
-        'description': 'Cách huấn luyện mèo cưng',
-      },
-      {
-        'title': 'Huấn luyện chó đi vệ sinh đúng chỗ',
-        'url': 'https://www.youtube.com/watch?v=qKnMxZjn6fI',
-        'description': 'Dạy chó đi vệ sinh',
-      },
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.school, color: Color(0xFFAB47BC)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text('Video huấn luyện',
-                    style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: trainingVideos.length,
-              itemBuilder: (context, index) {
-                final video = trainingVideos[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFAB47BC).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFAB47BC).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.play_circle_outline,
-                          color: Color(0xFFAB47BC)),
-                    ),
-                    title: Text(
-                      video['title']!,
-                      style: GoogleFonts.afacad(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: Text(
-                      video['description']!,
-                      style: GoogleFonts.afacad(fontSize: 12),
-                    ),
-                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () => _openUrl(video['url']!),
-                  ),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Đóng',
-                  style: GoogleFonts.afacad(color: Color(0xFF8E97FD))),
-            ),
-          ],
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const TrainingVideoScreen(),
+      ),
     );
   }
 
@@ -628,6 +419,7 @@ class _CareScreenState extends State<CareScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Row(
             children: [
               Icon(Icons.local_hospital, color: Colors.red),
