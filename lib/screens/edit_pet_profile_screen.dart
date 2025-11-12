@@ -177,9 +177,9 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
             'pets',
             fileName: '${_petType}_${DateTime.now().millisecondsSinceEpoch}',
           );
-          print('✅ Đã upload ảnh thú cưng: $avatarUrl');
+          print('Đã upload ảnh thú cưng: $avatarUrl');
         } catch (e) {
-          print('⚠️ Upload ảnh thất bại: $e');
+          print('Upload ảnh thất bại: $e');
         }
       }
 
@@ -211,7 +211,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Đã cập nhật ${_nameController.text}'),
+              content: Text('Đã cập nhật ${_nameController.text}'),
               backgroundColor: const Color(0xFF66BB6A),
             ),
           );
@@ -246,7 +246,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Đã thêm ${_nameController.text}'),
+              content: Text('Đã thêm ${_nameController.text}'),
               backgroundColor: const Color(0xFF66BB6A),
             ),
           );

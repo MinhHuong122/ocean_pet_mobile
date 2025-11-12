@@ -7,6 +7,7 @@ import 'package:ocean_pet/services/FirebaseService.dart';
 import 'package:ocean_pet/services/QuickLoginService.dart';
 import './custom_bottom_nav.dart';
 import 'login_screen.dart';
+import 'quick_login_screen.dart';
 import 'profile_detail_screen.dart';
 import 'pet_management_screen.dart';
 import 'help_support_screen.dart';
@@ -87,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         activityCount = activities;
         reminderCount = reminders;
       });
-      print('✅ Stats updated: Pets=$petCount, Activities=$activityCount, Reminders=$reminderCount');
+      print('Stats updated: Pets=$petCount, Activities=$activityCount, Reminders=$reminderCount');
     }
   }
 
@@ -526,45 +527,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: () async {
                 Navigator.of(context).pop();
 
-                // Show loading
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Text('Đang đăng xuất...'),
-                      ],
-                    ),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-
-                // Đăng xuất
+                // Logout immediately
                 await AuthService.logout();
                 
                 // Clear quick login credentials
                 try {
                   await QuickLoginService.clearCredentials();
+                  print('✅ [Logout] Quick login credentials cleared');
                 } catch (e) {
-                  print('Error clearing quick login credentials: $e');
+                  print('❌ [Logout] Error clearing quick login credentials: $e');
                 }
 
-                // Navigate to login screen (không phụ thuộc route name)
+                // Navigate back - check if user has logged in before
                 if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                        builder: (context) => const LoginScreen()),
-                    (route) => false,
-                  );
+                  print('[Logout] Redirecting user...');
+                  
+                  // Check if user has logged in before (has saved credentials)
+                  final hasLoggedInBefore = await QuickLoginService.hasLoggedInBefore();
+                  
+                  if (hasLoggedInBefore) {
+                    // Go to QuickLoginScreen
+                    print('[Logout] Going to QuickLoginScreen');
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const QuickLoginScreen()),
+                        (route) => false,
+                      );
+                    }
+                  } else {
+                    // Go to LoginScreen (first time)
+                    print('[Logout] Going to LoginScreen');
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    }
+                  }
                 }
               },
               child: Text(
@@ -679,7 +678,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('✅ Đã cập nhật thông tin'),
+                      content: Text('Đã cập nhật thông tin'),
                       backgroundColor: Color(0xFF66BB6A),
                     ),
                   );
@@ -942,7 +941,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('✅ Đã lưu cài đặt thông báo'),
+                        content: Text('Đã lưu cài đặt thông báo'),
                         backgroundColor: Color(0xFF66BB6A),
                       ),
                     );
@@ -1160,7 +1159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('✅ Đã thay đổi mật khẩu thành công'),
+                        content: Text('Đã thay đổi mật khẩu thành công'),
                         backgroundColor: Color(0xFF66BB6A),
                       ),
                     );

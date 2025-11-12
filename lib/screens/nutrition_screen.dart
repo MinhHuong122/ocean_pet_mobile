@@ -519,7 +519,7 @@ Chúc mừng! Bạn đang chăm sóc thú cưng rất tốt! 💚
               )
             else
               DropdownButtonFormField<String>(
-                value: _selectedPetId,
+                initialValue: _selectedPetId,
                 hint: Text(
                   'Chọn thú cưng từ danh sách',
                   style: GoogleFonts.afacad(color: Colors.grey),

@@ -23,7 +23,7 @@ class _DebugSeedDataScreenState extends State<DebugSeedDataScreen> {
     try {
       await FirebaseSeedData.seedAll();
       setState(() {
-        _message = '✅ Seed tất cả dữ liệu thành công!';
+        _message = ' Seed tất cả dữ liệu thành công!';
       });
     } catch (e) {
       setState(() {
@@ -45,7 +45,7 @@ class _DebugSeedDataScreenState extends State<DebugSeedDataScreen> {
     try {
       await FirebaseSeedData.seedCollection(collection);
       setState(() {
-        _message = '✅ Seed $collection thành công!';
+        _message = ' Seed $collection thành công!';
       });
     } catch (e) {
       setState(() {
@@ -91,7 +91,7 @@ class _DebugSeedDataScreenState extends State<DebugSeedDataScreen> {
     try {
       await FirebaseSeedData.clearAllData();
       setState(() {
-        _message = '✅ Xóa tất cả dữ liệu thành công!';
+        _message = ' Xóa tất cả dữ liệu thành công!';
       });
     } catch (e) {
       setState(() {

@@ -87,7 +87,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Email đã được xác thực thành công!'),
+              content: Text('Email đã được xác thực thành công!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -144,7 +144,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Đã gửi lại email xác thực. Vui lòng kiểm tra hộp thư của bạn.'),
+            content: Text('Đã gửi lại email xác thực. Vui lòng kiểm tra hộp thư của bạn.'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
@@ -404,7 +404,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                '✅ OTP: 123456',
+                                'OTP: 123456',
                                 style: TextStyle(
                                   fontFamily: 'monospace',
                                   fontSize: 12,

@@ -26,13 +26,16 @@ service cloud.firestore {
     }
     
     // ==================== USERS COLLECTION ====================
-    // Users can read all user profiles (for social features)
-    // Users can only create/update/delete their own profile
+    // Allow checking if email exists (for forgot password) - no auth needed
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId);
       allow update, delete: if isOwner(userId);
     }
+    
+    // Allow querying users by email (for OTP verification) - no auth needed
+    match /users {
+      allow read: if request.query.limit <= 1 && request.query.where.size() == 1;
     
     // ==================== PETS COLLECTION ====================
     // Users can only read/write their own pets
@@ -152,6 +155,13 @@ service cloud.firestore {
       allow read: if isResourceOwner();
       allow create: if isRequestResourceOwner();
       allow update, delete: if isResourceOwner();
+    }
+
+    // ==================== OTP REQUESTS COLLECTION ====================
+    // Allow creating OTP requests without authentication (for forgot password)
+    match /otp_requests/{otpId} {
+      allow create: if true; // Anyone can create OTP request
+      allow read, update: if resource.data.email == request.auth.email || request.auth == null;
     }
   }
 }

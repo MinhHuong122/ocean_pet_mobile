@@ -4,6 +4,7 @@ import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/QuickLoginService.dart';
 import 'package:ocean_pet/screens/welcome_screen.dart';
 import 'package:ocean_pet/screens/login_screen.dart';
+import 'package:ocean_pet/screens/forgot_password_screen.dart';
 import 'package:local_auth/local_auth.dart';
 
 class QuickLoginScreen extends StatefulWidget {
@@ -30,14 +31,51 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
 
   Future<void> _initializeScreen() async {
     try {
+      // Check if session is still valid (15-minute timeout)
+      final hasLoggedInBefore = await QuickLoginService.hasLoggedInBefore();
+      if (hasLoggedInBefore) {
+        final isSessionValid = await QuickLoginService.isSessionValid();
+        if (!isSessionValid) {
+          print('🔴 [QuickLogin] Session expired - ending session');
+          await QuickLoginService.endSession();
+          // Redirect to login after a short delay
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+            );
+          }
+          return;
+        }
+      }
+
       // Lấy email đã lưu
-      final email = await QuickLoginService.getSavedEmail();
+      var email = await QuickLoginService.getSavedEmail();
+      print('📧 [QuickLogin] Saved email from QuickLoginService: $email');
+
+      // Fallback 1: Check Firebase Auth user
+      if (email == null || email.isEmpty) {
+        final firebaseUser = AuthService.getCurrentUser();
+        if (firebaseUser != null) {
+          email = firebaseUser.email;
+          print('📧 [QuickLogin] Email from Firebase Auth: $email');
+        }
+      }
+
+      // Fallback 2: If still no email, try to get last used email from login screen
+      if (email == null || email.isEmpty) {
+        print('⚠️ [QuickLogin] Email still not found - this is first time login');
+        email = 'unknown@email.com'; // Placeholder
+      }
+
       final biometricEnabled =
           await QuickLoginService.isBiometricEnabled();
       final biometricAvailable =
           await QuickLoginService.isBiometricAvailable();
       final availableBiometrics =
           await QuickLoginService.getAvailableBiometrics();
+
+      print('🔐 [QuickLogin] Biometric enabled: $biometricEnabled, available: $biometricAvailable');
 
       setState(() {
         _savedEmail = email;
@@ -47,7 +85,8 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
       });
 
       // Nếu biometric enabled, thử tự động authenticate
-      if (_isBiometricEnabled && _isBiometricAvailable) {
+      if (_isBiometricEnabled && _isBiometricAvailable && _savedEmail != null) {
+        print('[QuickLogin] Starting biometric authentication...');
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
           _authenticateWithBiometric();
@@ -95,7 +134,7 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
         });
       }
     } catch (e) {
-      print('❌ [Biometric Auth] Error: $e');
+      print('[Biometric Auth] Error: $e');
       setState(() {
         _isLoading = false;
       });
@@ -121,16 +160,28 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
       return;
     }
 
-    if (_savedEmail == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy email. Vui lòng đăng nhập lại.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    if (_savedEmail == null || _savedEmail!.isEmpty) {
+      print('[QuickLogin] Email not found. Saved: $_savedEmail');
+      // Go back to main login screen
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      }
       return;
     }
 
+    print('[QuickLogin] Logging in with email: $_savedEmail');
     _performLogin(_savedEmail!, _passwordController.text);
   }
 
@@ -143,6 +194,9 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
       final result = await AuthService.login(email, password);
 
       if (result['success']) {
+        // Record login time for 15-minute session
+        await QuickLoginService.recordLoginTime();
+        
         if (mounted) {
           // Chuyển sang WelcomeScreen
           Navigator.of(context).pushAndRemoveUntil(
@@ -240,83 +294,82 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
 
                 const SizedBox(height: 40),
 
-                // Biometric option
-                if (_isBiometricEnabled && _isBiometricAvailable)
-                  Column(
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        height: 120,
-                        child: ElevatedButton(
-                          onPressed:
-                              _isLoading ? null : _authenticateWithBiometric,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B5CF6),
-                            disabledBackgroundColor:
-                                const Color(0xFF8B5CF6).withOpacity(0.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                // Biometric option - ALWAYS show button
+                Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 120,
+                      child: ElevatedButton(
+                        onPressed:
+                            _isLoading ? null : _authenticateWithBiometric,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B5CF6),
+                          disabledBackgroundColor:
+                              const Color(0xFF8B5CF6).withOpacity(0.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 40,
-                                  width: 40,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
-                                  ),
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      _getBiometricIcon(),
-                                      size: 48,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'ĐĂNG NHẬP VỚI ${_getBiometricLabel().toUpperCase()}',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                        fontFamily: R.font.sfpro,
-                                      ),
-                                    ),
-                                  ],
-                                ),
                         ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Divider
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.grey[300])),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'HOẶC',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                                fontFamily: R.font.sfpro,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 40,
+                                width: 40,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _getBiometricIcon(),
+                                    size: 48,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'ĐĂNG NHẬP VỚI ${_getBiometricLabel().toUpperCase()}',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: R.font.sfpro,
+                                    ),
+                                  ),
+                                ],
                               ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'HOẶC',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontFamily: R.font.sfpro,
                             ),
                           ),
-                          Expanded(child: Divider(color: Colors.grey[300])),
-                        ],
-                      ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey[300])),
+                      ],
+                    ),
 
-                      const SizedBox(height: 20),
-                    ],
-                  ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
 
                 // Password input
                 Text(
@@ -398,6 +451,30 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
                   ),
                 ),
 
+                const SizedBox(height: 16),
+
+                // Forgot password link
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (context) => const ForgotPasswordScreen()),
+                      );
+                    },
+                    child: Text(
+                      'Quên mật khẩu?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: const Color(0xFF8B5CF6),
+                        fontWeight: FontWeight.w600,
+                        fontFamily: R.font.sfpro,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 32),
 
                 // Use different account
@@ -419,11 +496,11 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
                           fontFamily: R.font.sfpro,
                         ),
                         children: [
-                          const TextSpan(text: 'SỬ DỤNG '),
+                  
                           TextSpan(
-                            text: 'TÀI KHOẢN KHÁC',
+                            text: 'Đăng nhập bằng tài khoản khác',
                             style: TextStyle(
-                              color: const Color(0xFF8B5CF6),
+                              color: const Color.fromARGB(255, 102, 102, 102),
                               fontWeight: FontWeight.w600,
                             ),
                           ),

@@ -15,6 +15,8 @@ class QuickLoginService {
   // Keys cho Shared Preferences
   static const String _hasLoggedInBeforeKey = 'has_logged_in_before';
   static const String _biometricAvailableKey = 'biometric_available';
+  static const String _lastLoginTimeKey = 'last_login_time';
+  static const int _sessionDurationMinutes = 15; // 15-minute session
 
   /// Kiểm tra xem thiết bị có hỗ trợ biometric không
   static Future<bool> isBiometricAvailable() async {
@@ -51,7 +53,7 @@ class QuickLoginService {
     required bool enableBiometric,
   }) async {
     try {
-      // Lưu email và password vào Secure Storage
+      // Lưu email và password vào Secure Storage (email sẽ được giữ lại sau logout)
       await _storage.write(key: _emailKey, value: email);
       await _storage.write(key: _passwordKey, value: password);
       
@@ -60,7 +62,7 @@ class QuickLoginService {
       await prefs.setBool(_isBiometricEnabledKey, enableBiometric);
       await prefs.setBool(_hasLoggedInBeforeKey, true);
       
-      print('✅ [QuickLogin] Credentials saved successfully');
+      print('✅ [QuickLogin] Credentials saved successfully (email: $email)');
     } catch (e) {
       print('❌ [QuickLogin] Error saving credentials: $e');
       rethrow;
@@ -139,16 +141,19 @@ class QuickLoginService {
   }
 
   /// Xóa thông tin đăng nhập (logout)
+  /// KHÔNG xoá email - email phải được giữ lại cho QuickLoginScreen
   static Future<void> clearCredentials() async {
     try {
-      await _storage.delete(key: _emailKey);
+      // CHỈ xoá password, giữ lại email
       await _storage.delete(key: _passwordKey);
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isBiometricEnabledKey, false);
-      await prefs.setBool(_hasLoggedInBeforeKey, false);
+      // NOTE: Do NOT set hasLoggedInBefore to false here!
+      // We want to preserve the "user has logged in before" flag
+      // so they see QuickLoginScreen after logout, not LoginScreen
       
-      print('✅ [QuickLogin] Credentials cleared');
+      print('✅ [QuickLogin] Credentials cleared (email preserved for QuickLoginScreen)');
     } catch (e) {
       print('❌ [QuickLogin] Error clearing credentials: $e');
       rethrow;
@@ -176,6 +181,72 @@ class QuickLoginService {
     } catch (e) {
       print('❌ [QuickLogin] Error enabling biometric: $e');
       rethrow;
+    }
+  }
+
+  /// Record login time for session timeout
+  static Future<void> recordLoginTime() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await prefs.setInt(_lastLoginTimeKey, now);
+      print('✅ [QuickLogin] Login time recorded: ${DateTime.fromMillisecondsSinceEpoch(now)}');
+    } catch (e) {
+      print('❌ [QuickLogin] Error recording login time: $e');
+    }
+  }
+
+  /// Check if session is still valid (within 15 minutes)
+  static Future<bool> isSessionValid() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastLoginTime = prefs.getInt(_lastLoginTimeKey);
+      
+      if (lastLoginTime == null) {
+        print('⚠️ [QuickLogin] No session time found - first time quick login');
+        return true; // Allow first time
+      }
+      
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final elapsedMs = now - lastLoginTime;
+      final elapsedMinutes = (elapsedMs / (1000 * 60)).toStringAsFixed(2);
+      final isValid = elapsedMs < (_sessionDurationMinutes * 60 * 1000);
+      
+      print('⏱️ [QuickLogin] Session check:');
+      print('   Last login: ${DateTime.fromMillisecondsSinceEpoch(lastLoginTime)}');
+      print('   Current time: ${DateTime.fromMillisecondsSinceEpoch(now)}');
+      print('   Elapsed: $elapsedMinutes minutes');
+      print('   Valid: $isValid (timeout after $_sessionDurationMinutes minutes)');
+      
+      return isValid;
+    } catch (e) {
+      print('❌ [QuickLogin] Error checking session: $e');
+      return true; // Allow on error
+    }
+  }
+
+  /// End session after timeout (clear login state permanently)
+  static Future<void> endSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_hasLoggedInBeforeKey, false);
+      await prefs.remove(_lastLoginTimeKey);
+      await prefs.setBool(_isBiometricEnabledKey, false);
+      await _storage.delete(key: _emailKey);
+      await _storage.delete(key: _passwordKey);
+      print('✅ [QuickLogin] Session ended - returning to login screen');
+    } catch (e) {
+      print('❌ [QuickLogin] Error ending session: $e');
+    }
+  }
+
+  /// Save only email for display on quick login (preserves email even after logout)
+  static Future<void> saveEmailForQuickLogin(String email) async {
+    try {
+      await _storage.write(key: _emailKey, value: email);
+      print('✅ [QuickLogin] Email saved for quick login: $email');
+    } catch (e) {
+      print('❌ [QuickLogin] Error saving email: $e');
     }
   }
 }

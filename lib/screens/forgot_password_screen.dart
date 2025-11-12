@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 
@@ -13,6 +14,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   bool _isLoading = false;
   bool _emailSent = false;
+  String? _emailError;
 
   @override
   void dispose() {
@@ -20,65 +22,149 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  /// Xác thực và gửi email đặt lại mật khẩu
   Future<void> _sendResetEmail() async {
-    if (_emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập email của bạn'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    final email = _emailController.text.trim();
+
+    // Kiểm tra email trống
+    if (email.isEmpty) {
+      _showError('Vui lòng nhập email của bạn');
+      return;
+    }
+
+    // Kiểm tra định dạng email
+    if (!_isValidEmail(email)) {
+      _showError('Email không hợp lệ. Vui lòng nhập lại');
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _emailError = null;
     });
 
     try {
-      final result = await AuthService.generateAndSendOTP(
-        _emailController.text.trim(),
-      );
+      final result = await AuthService.generateAndSendOTP(email);
+
+      if (!mounted) return;
 
       if (result['success']) {
+        // ✅ Email sent - show success message
         setState(() {
           _emailSent = true;
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Email đã được gửi'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Gửi email thất bại'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Có lỗi xảy ra, vui lòng thử lại'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
           _isLoading = false;
         });
+
+        _showSuccessSnackBar(
+          result['message'] ?? 'Email đặt lại mật khẩu đã được gửi',
+          duration: const Duration(seconds: 6),
+        );
+      } else {
+        setState(() {
+          _isLoading = false;
+          _emailError = result['message'] ?? 'Gửi email thất bại';
+        });
+
+        _showErrorSnackBar(result['message'] ?? 'Gửi email thất bại');
       }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _isLoading = false;
+        _emailError = _getFirebaseErrorMessage(e.code);
+      });
+
+      if (mounted) {
+        _showErrorSnackBar(_emailError ?? 'Có lỗi xảy ra');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _emailError = 'Lỗi kết nối: ${e.toString()}';
+      });
+
+      if (mounted) {
+        _showErrorSnackBar('Có lỗi xảy ra, vui lòng thử lại');
+      }
+    }
+  }
+
+  /// Hiển thị thông báo lỗi dưới input
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Hiển thị SnackBar thành công
+  void _showSuccessSnackBar(String message, {Duration? duration}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: duration ?? const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  /// Hiển thị SnackBar lỗi
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  /// Dialog thông báo lỗi chi tiết
+  void _showErrorDialog({
+    required String title,
+    required String message,
+    VoidCallback? onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm?.call();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kiểm tra định dạng email
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    return emailRegex.hasMatch(email);
+  }
+
+  /// Lấy thông báo lỗi từ Firebase error code
+  String _getFirebaseErrorMessage(String code) {
+    switch (code) {
+      case 'user-not-found':
+        return 'Không tìm thấy tài khoản với email này';
+      case 'invalid-email':
+        return 'Email không hợp lệ';
+      case 'too-many-requests':
+        return 'Quá nhiều yêu cầu. Vui lòng thử lại sau vài phút';
+      case 'network-request-failed':
+        return 'Lỗi kết nối mạng. Vui lòng kiểm tra internet';
+      default:
+        return 'Có lỗi xảy ra. Vui lòng thử lại';
     }
   }
 
@@ -134,9 +220,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   enabled: !_isLoading,
+                  onChanged: (_) {
+                    // Xoá lỗi khi user bắt đầu gõ
+                    if (_emailError != null) {
+                      setState(() => _emailError = null);
+                    }
+                  },
                   decoration: InputDecoration(
                     hintText: 'Địa chỉ email',
                     prefixIcon: const Icon(Icons.email_outlined),
+                    errorText: _emailError,
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.red, width: 2),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -301,11 +402,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         fontFamily: R.font.sfpro,
                       ),
                       children: [
-                        const TextSpan(text: 'QUAY LẠI '),
+                        
                         TextSpan(
-                          text: 'ĐĂNG NHẬP',
+                          text: 'Quay lại đăng nhập',
                           style: TextStyle(
-                            color: const Color(0xFF8B5CF6),
+                            color: const Color.fromARGB(255, 140, 138, 138),
                             fontWeight: FontWeight.w600,
                           ),
                         ),

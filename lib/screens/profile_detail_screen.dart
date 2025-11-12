@@ -211,7 +211,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('✅ Đã cập nhật thông tin'),
+                            content: Text('Đã cập nhật thông tin'),
                             backgroundColor: Color(0xFF66BB6A),
                           ),
                         );

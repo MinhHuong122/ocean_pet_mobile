@@ -93,9 +93,9 @@ class _CreatePetProfileScreenState extends State<CreatePetProfileScreen> {
               'pets', // folder name
               fileName: '${form.petType}_${DateTime.now().millisecondsSinceEpoch}',
             );
-            print('✅ Đã upload ảnh thú cưng: $avatarUrl');
+            print('Đã upload ảnh thú cưng: $avatarUrl');
           } catch (e) {
-            print('⚠️ Upload ảnh thất bại: $e');
+            print('Upload ảnh thất bại: $e');
             // Tiếp tục lưu pet mà không có ảnh
           }
         }

@@ -68,14 +68,17 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result['success']) {
         // Save credentials for quick login
         try {
+          final email = _emailController.text.trim();
           await QuickLoginService.saveCredentials(
-            email: _emailController.text.trim(),
+            email: email,
             password: _passwordController.text,
             enableBiometric: false, // User can enable it later in settings
           );
-          print('✅ [LoginScreen] Credentials saved for quick login');
+          // Record login time for 15-minute session timeout
+          await QuickLoginService.recordLoginTime();
+          print('✅ [LoginScreen] Credentials saved for quick login: $email');
         } catch (e) {
-          print('⚠️ [LoginScreen] Failed to save credentials: $e');
+          print('❌ [LoginScreen] Failed to save credentials: $e');
           // Continue anyway, not critical
         }
 
@@ -121,6 +124,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final result = await AuthService.loginWithGoogle();
       if (result['success']) {
+        // Record login time for 15-minute session
+        await QuickLoginService.recordLoginTime();
+        
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const WelcomeScreen()),
@@ -162,6 +168,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final result = await AuthService.loginWithFacebook();
       if (result['success']) {
+        // Record login time for 15-minute session
+        await QuickLoginService.recordLoginTime();
+        
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const WelcomeScreen()),
@@ -398,10 +407,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Quên mật khẩu?',
                     style: TextStyle(
                       fontSize: 14,
-                      color: const Color(0xFF8B5CF6),
+                      color: const Color.fromARGB(255, 127, 127, 127),
                       fontWeight: FontWeight.w500,
                       fontFamily: R.font.sfpro,
-                      decoration: TextDecoration.underline,
+                   
                     ),
                   ),
                 ),
