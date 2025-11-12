@@ -809,4 +809,126 @@ class AuthService {
       };
     }
   }
+
+  // ==================== OTP FOR FORGOT PASSWORD ====================
+
+  /// Tạo và lưu OTP cho đặt lại mật khẩu
+  static Future<Map<String, dynamic>> generateAndSendOTP(String email) async {
+    try {
+      // Kiểm tra email tồn tại
+      final user = await _auth.fetchSignInMethodsForEmail(email);
+      if (user.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Không tìm thấy tài khoản với email này',
+        };
+      }
+
+      // Gửi password reset email (Firebase tự động gửi link)
+      await _auth.sendPasswordResetEmail(email: email);
+
+      // Lưu OTP vào Firestore (optional, cho tracking)
+      final now = DateTime.now();
+      await _firestore.collection('otp_requests').add({
+        'email': email,
+        'requested_at': Timestamp.fromDate(now),
+        'expires_at': Timestamp.fromDate(now.add(const Duration(minutes: 10))),
+        'status': 'pending',
+      });
+
+      print('✅ [OTP] Password reset email sent to: $email');
+
+      return {
+        'success': true,
+        'message':
+            'Đã gửi email đặt lại mật khẩu. Vui lòng kiểm tra hộp thư của bạn (bao gồm thư rác).',
+      };
+    } on FirebaseAuthException catch (e) {
+      String message = 'Gửi email thất bại';
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'Không tìm thấy tài khoản với email này';
+          break;
+        case 'invalid-email':
+          message = 'Email không hợp lệ';
+          break;
+        case 'too-many-requests':
+          message = 'Quá nhiều yêu cầu. Vui lòng thử lại sau 1 phút';
+          break;
+      }
+      return {
+        'success': false,
+        'message': message,
+      };
+    } catch (e) {
+      print('❌ [OTP] Error: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi gửi email: $e',
+      };
+    }
+  }
+
+  /// Đặt lại mật khẩu bằng reset code từ email
+  static Future<Map<String, dynamic>> resetPasswordWithCode(
+    String oobCode,
+    String newPassword,
+  ) async {
+    try {
+      // Xác minh code từ email
+      final email = await _auth.verifyPasswordResetCode(oobCode);
+      print('✅ [Password Reset] Code valid for email: $email');
+
+      // Đặt lại mật khẩu
+      await _auth.confirmPasswordReset(
+        code: oobCode,
+        newPassword: newPassword,
+      );
+
+      print('✅ [Password Reset] Password reset successful');
+
+      return {
+        'success': true,
+        'message': 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.',
+      };
+    } on FirebaseAuthException catch (e) {
+      String message = 'Đặt lại mật khẩu thất bại';
+      switch (e.code) {
+        case 'invalid-action-code':
+          message = 'Đường dẫn đặt lại mật khẩu không hợp lệ hoặc đã hết hạn';
+          break;
+        case 'expired-action-code':
+          message = 'Đường dẫn đặt lại mật khẩu đã hết hạn (10 phút)';
+          break;
+        case 'weak-password':
+          message = 'Mật khẩu mới quá yếu (tối thiểu 6 ký tự)';
+          break;
+        case 'user-disabled':
+          message = 'Tài khoản này đã bị vô hiệu hóa';
+          break;
+      }
+      return {
+        'success': false,
+        'message': message,
+      };
+    } catch (e) {
+      print('❌ [Password Reset] Error: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi đặt lại mật khẩu: $e',
+      };
+    }
+  }
+
+  /// Xác minh mã reset từ link email
+  static Future<bool> verifyResetCode(String oobCode) async {
+    try {
+      final email = await _auth.verifyPasswordResetCode(oobCode);
+      print('✅ [Password Reset] Code verified for: $email');
+      return true;
+    } catch (e) {
+      print('❌ [Password Reset] Invalid code: $e');
+      return false;
+    }
+  }
 }

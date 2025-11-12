@@ -141,13 +141,15 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
     final String? breed = pet['breed'];
     final int? age = pet['age'];
     final double? weight = pet['weight'];
+    final double? height = pet['height'];
     final String gender = pet['gender'] ?? 'unknown';
     final String? avatarUrl = pet['avatar_url'];
 
     String genderDisplay = gender == 'male' ? 'Đực' : gender == 'female' ? 'Cái' : 'Khác';
     IconData genderIcon = gender == 'male' ? Icons.male : gender == 'female' ? Icons.female : Icons.help_outline;
-    String ageDisplay = age != null ? '$age tuổi' : 'Chưa rõ';
+    String ageDisplay = age != null ? '$age tháng' : 'Chưa rõ';
     String weightDisplay = weight != null ? '${weight}kg' : 'Chưa rõ';
+    String heightDisplay = height != null ? '${height}cm' : 'Chưa rõ';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -209,8 +211,13 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
                       children: [
                         Icon(genderIcon, size: 16, color: const Color(0xFF8E97FD)),
                         const SizedBox(width: 4),
-                        Text('$genderDisplay  $weightDisplay', style: GoogleFonts.afacad(fontSize: 13, color: const Color(0xFF6B7280))),
+                        Text('$genderDisplay', style: GoogleFonts.afacad(fontSize: 13, color: const Color(0xFF6B7280))),
                       ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$weightDisplay  |  $heightDisplay',
+                      style: GoogleFonts.afacad(fontSize: 13, color: const Color(0xFF6B7280)),
                     ),
                   ],
                 ),

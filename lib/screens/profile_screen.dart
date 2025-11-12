@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/FirebaseService.dart';
+import 'package:ocean_pet/services/QuickLoginService.dart';
 import './custom_bottom_nav.dart';
 import 'login_screen.dart';
 import 'profile_detail_screen.dart';
@@ -549,6 +550,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // Đăng xuất
                 await AuthService.logout();
+                
+                // Clear quick login credentials
+                try {
+                  await QuickLoginService.clearCredentials();
+                } catch (e) {
+                  print('Error clearing quick login credentials: $e');
+                }
 
                 // Navigate to login screen (không phụ thuộc route name)
                 if (context.mounted) {

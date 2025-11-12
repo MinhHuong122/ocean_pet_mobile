@@ -81,6 +81,12 @@ dependencies:
   cloudinary_api: ^1.1.1
   cloudinary_url_gen: ^1.8.0
   
+  # Biometric authentication (Face ID, Fingerprint)
+  local_auth: ^2.2.0
+  
+  # Secure storage for credentials
+  flutter_secure_storage: ^9.0.0
+  
   # Calendar and notifications
   table_calendar: ^3.0.9
   flutter_local_notifications: ^17.0.0

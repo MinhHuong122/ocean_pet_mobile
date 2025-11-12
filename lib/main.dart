@@ -3,8 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/screens/onboarding_screen.dart';
 import 'package:ocean_pet/screens/login_screen.dart';
+import 'package:ocean_pet/screens/quick_login_screen.dart';
 import 'package:ocean_pet/screens/home_screen.dart';
 import 'package:ocean_pet/services/AuthService.dart';
+import 'package:ocean_pet/services/QuickLoginService.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:http/http.dart' as http;
@@ -99,6 +101,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
   bool _isLoggedIn = false;
   bool _hasSeenOnboarding = false;
+  bool _hasLoggedInBefore = false;
 
   @override
   void initState() {
@@ -107,14 +110,25 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkAppState() async {
-    final isLoggedIn = await AuthService.isLoggedIn();
-    // For demo purposes, we'll always show onboarding first
-    // In real app, you would check SharedPreferences for onboarding status
-    setState(() {
-      _isLoggedIn = isLoggedIn;
-      _hasSeenOnboarding = false; // Always show onboarding for demo
-      _isLoading = false;
-    });
+    try {
+      final isLoggedIn = await AuthService.isLoggedIn();
+      final hasLoggedInBefore = await QuickLoginService.hasLoggedInBefore();
+      
+      setState(() {
+        _isLoggedIn = isLoggedIn;
+        _hasLoggedInBefore = hasLoggedInBefore;
+        _hasSeenOnboarding = false; // Always show onboarding for demo
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error checking app state: $e');
+      setState(() {
+        _isLoggedIn = false;
+        _hasLoggedInBefore = false;
+        _hasSeenOnboarding = false;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -131,6 +145,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
       return const OnboardingScreen();
     }
 
-    return _isLoggedIn ? HomeScreen() : const LoginScreen();
+    if (_isLoggedIn) {
+      return HomeScreen();
+    }
+
+    // If user has logged in before, show QuickLoginScreen instead of LoginScreen
+    if (_hasLoggedInBefore) {
+      return const QuickLoginScreen();
+    }
+
+    // First time user, show LoginScreen
+    return const LoginScreen();
   }
 }

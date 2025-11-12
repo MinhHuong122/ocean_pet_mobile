@@ -27,6 +27,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _breedController;
   late TextEditingController _weightController;
+  TextEditingController _heightController = TextEditingController();
   late TextEditingController _ageController;
   late TextEditingController _notesController;
 
@@ -63,6 +64,9 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
       _weightController = TextEditingController(
         text: pet['weight'] != null ? pet['weight'].toString() : '',
       );
+      _heightController = TextEditingController(
+        text: pet['height'] != null ? pet['height'].toString() : '',
+      );
       _ageController = TextEditingController(
         text: pet['age'] != null ? pet['age'].toString() : '',
       );
@@ -71,15 +75,15 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
       _petType = pet['type'] ?? 'Chó';
       _existingAvatarUrl = pet['avatar_url'];
       
-      // Tính birthDate từ age nếu có
-      if (pet['age'] != null) {
-        final age = pet['age'] as int;
-        _birthDate = DateTime.now().subtract(Duration(days: age * 365));
+      // Set birthDate từ Firestore
+      if (pet['birth_date'] != null) {
+        _birthDate = (pet['birth_date'] as dynamic).toDate();
       }
     } else {
       _nameController = TextEditingController();
       _breedController = TextEditingController();
       _weightController = TextEditingController();
+      _heightController = TextEditingController();
       _ageController = TextEditingController();
       _notesController = TextEditingController();
     }
@@ -90,6 +94,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
     _nameController.dispose();
     _breedController.dispose();
     _weightController.dispose();
+    _heightController.dispose();
     _ageController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -163,19 +168,6 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
     });
 
     try {
-      // Tính tuổi từ ngày sinh
-      int? age;
-      if (_birthDate != null) {
-        final now = DateTime.now();
-        age = now.year - _birthDate!.year;
-        if (now.month < _birthDate!.month ||
-            (now.month == _birthDate!.month && now.day < _birthDate!.day)) {
-          age--;
-        }
-      } else if (_ageController.text.isNotEmpty) {
-        age = int.tryParse(_ageController.text);
-      }
-
       // Upload ảnh lên Cloudinary nếu có ảnh mới
       String? avatarUrl = _existingAvatarUrl;
       if (_imageFile != null) {
@@ -201,11 +193,14 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
             'breed': _breedController.text.trim().isNotEmpty
                 ? _breedController.text.trim()
                 : null,
-            'age': age,
+            'gender': _gender,
+            'birth_date': _birthDate,
             'weight': _weightController.text.trim().isNotEmpty
                 ? double.tryParse(_weightController.text.trim())
                 : null,
-            'gender': _gender,
+            'height': _heightController.text.trim().isNotEmpty
+                ? double.tryParse(_heightController.text.trim())
+                : null,
             'avatar_url': avatarUrl,
             'notes': _notesController.text.trim().isNotEmpty
                 ? _notesController.text.trim()
@@ -224,17 +219,24 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
         }
       } else {
         // Add new pet
+        if (_birthDate == null) {
+          throw Exception('Vui lòng chọn ngày sinh');
+        }
+        
         await FirebaseService.addPet(
           name: _nameController.text.trim(),
           type: _petType,
+          gender: _gender,
+          birthDate: _birthDate!,
           breed: _breedController.text.trim().isNotEmpty
               ? _breedController.text.trim()
               : null,
-          age: age,
           weight: _weightController.text.trim().isNotEmpty
               ? double.tryParse(_weightController.text.trim())
               : null,
-          gender: _gender,
+          height: _heightController.text.trim().isNotEmpty
+              ? double.tryParse(_heightController.text.trim())
+              : null,
           avatarUrl: avatarUrl,
           notes: _notesController.text.trim().isNotEmpty
               ? _notesController.text.trim()
@@ -551,36 +553,71 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
 
               const SizedBox(height: 16),
 
-              // Weight field
-              TextFormField(
-                controller: _weightController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Cân nặng (kg)',
-                  labelStyle: GoogleFonts.afacad(),
-                  hintText: 'Ví dụ: 5.5',
-                  hintStyle: GoogleFonts.afacad(),
-                  prefixIcon:
-                      const Icon(Icons.monitor_weight, color: Color(0xFF8E97FD)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // Weight and Height fields (side by side)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _weightController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Cân nặng (kg) *',
+                        labelStyle: GoogleFonts.afacad(),
+                        hintText: 'Ví dụ: 5.5',
+                        hintStyle: GoogleFonts.afacad(),
+                        prefixIcon: const Icon(Icons.monitor_weight, color: Color(0xFF8E97FD)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF8E97FD), width: 2),
+                        ),
+                      ),
+                      style: GoogleFonts.afacad(),
+                      validator: (value) {
+                        if (value != null && value.trim().isNotEmpty) {
+                          final weight = double.tryParse(value.trim());
+                          if (weight == null || weight <= 0) {
+                            return 'Cân nặng không hợp lệ';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF8E97FD), width: 2),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _heightController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Chiều cao (cm) *',
+                        labelStyle: GoogleFonts.afacad(),
+                        hintText: 'Ví dụ: 30.5',
+                        hintStyle: GoogleFonts.afacad(),
+                        prefixIcon: const Icon(Icons.height, color: Color(0xFF8E97FD)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF8E97FD), width: 2),
+                        ),
+                      ),
+                      style: GoogleFonts.afacad(),
+                      validator: (value) {
+                        if (value != null && value.trim().isNotEmpty) {
+                          final height = double.tryParse(value.trim());
+                          if (height == null || height <= 0) {
+                            return 'Chiều cao không hợp lệ';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
                   ),
-                ),
-                style: GoogleFonts.afacad(),
-                validator: (value) {
-                  if (value != null && value.trim().isNotEmpty) {
-                    final weight = double.tryParse(value.trim());
-                    if (weight == null || weight <= 0) {
-                      return 'Vui lòng nhập cân nặng hợp lệ';
-                    }
-                  }
-                  return null;
-                },
+                ],
               ),
 
               const SizedBox(height: 16),

@@ -76,15 +76,12 @@ class _CreatePetProfileScreenState extends State<CreatePetProfileScreen> {
       for (int i = 0; i < _petForms.length; i++) {
         final form = _petForms[i];
         
-        // Tính tuổi từ ngày sinh
-        int? age;
-        if (form.birthDate != null) {
-          final now = DateTime.now();
-          age = now.year - form.birthDate!.year;
-          if (now.month < form.birthDate!.month ||
-              (now.month == form.birthDate!.month && now.day < form.birthDate!.day)) {
-            age--;
-          }
+        // Kiểm tra các trường bắt buộc
+        if (form.birthDate == null) {
+          throw Exception('Vui lòng chọn ngày sinh cho tất cả thú cưng');
+        }
+        if (form.gender == 'unknown') {
+          throw Exception('Vui lòng chọn giới tính cho tất cả thú cưng');
         }
 
         // Upload ảnh lên Cloudinary nếu có
@@ -106,14 +103,17 @@ class _CreatePetProfileScreenState extends State<CreatePetProfileScreen> {
         await FirebaseService.addPet(
           name: form.nameController.text.trim(),
           type: form.petType,
+          gender: form.gender,
+          birthDate: form.birthDate!,
           breed: form.breedController.text.trim().isNotEmpty
               ? form.breedController.text.trim()
               : null,
-          age: age,
           weight: form.weightController.text.trim().isNotEmpty
               ? double.tryParse(form.weightController.text.trim())
               : null,
-          gender: form.gender,
+          height: form.heightController.text.trim().isNotEmpty
+              ? double.tryParse(form.heightController.text.trim())
+              : null,
           avatarUrl: avatarUrl,
           notes: form.notesController.text.trim().isNotEmpty
               ? form.notesController.text.trim()
@@ -462,12 +462,75 @@ class _CreatePetProfileScreenState extends State<CreatePetProfileScreen> {
 
             const SizedBox(height: 16),
 
-            // Birth date picker
+            // Weight and Height fields (side by side)
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: form.weightController,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Cân nặng (kg) *',
+                      hintText: 'Ví dụ: 5.5',
+                      prefixIcon: const Icon(Icons.monitor_weight),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value != null && value.trim().isNotEmpty) {
+                        final weight = double.tryParse(value.trim());
+                        if (weight == null || weight <= 0) {
+                          return 'Cân nặng không hợp lệ';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: form.heightController,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Chiều cao (cm) *',
+                      hintText: 'Ví dụ: 30.5',
+                      prefixIcon: const Icon(Icons.height),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value != null && value.trim().isNotEmpty) {
+                        final height = double.tryParse(value.trim());
+                        if (height == null || height <= 0) {
+                          return 'Chiều cao không hợp lệ';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Birth date picker (required)
             InkWell(
               onTap: () => _selectBirthDate(context, form),
               child: InputDecorator(
                 decoration: InputDecoration(
-                  labelText: 'Ngày sinh',
+                  labelText: 'Ngày sinh *',
                   prefixIcon: const Icon(Icons.cake),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -476,14 +539,21 @@ class _CreatePetProfileScreenState extends State<CreatePetProfileScreen> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
                   ),
+                  errorBorder: form.birthDate == null
+                      ? OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.red, width: 1),
+                        )
+                      : null,
                 ),
                 child: Text(
                   form.birthDate != null
                       ? DateFormat('dd/MM/yyyy').format(form.birthDate!)
                       : 'Chọn ngày sinh',
                   style: TextStyle(
-                    color: form.birthDate != null ? Colors.black : Colors.grey,
+                    color: form.birthDate != null ? Colors.black : Colors.red,
                     fontFamily: R.font.sfpro,
+                    fontWeight: form.birthDate == null ? FontWeight.w500 : FontWeight.normal,
                   ),
                 ),
               ),
@@ -510,35 +580,6 @@ class _CreatePetProfileScreenState extends State<CreatePetProfileScreen> {
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Weight field
-            TextFormField(
-              controller: form.weightController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Cân nặng (kg)',
-                hintText: 'Ví dụ: 5.5',
-                prefixIcon: const Icon(Icons.monitor_weight),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
-                ),
-              ),
-              validator: (value) {
-                if (value != null && value.trim().isNotEmpty) {
-                  final weight = double.tryParse(value.trim());
-                  if (weight == null || weight <= 0) {
-                    return 'Vui lòng nhập cân nặng hợp lệ';
-                  }
-                }
-                return null;
-              },
             ),
 
             const SizedBox(height: 16),
@@ -669,6 +710,7 @@ class PetFormData {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController breedController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
+  final TextEditingController heightController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
   String gender = 'unknown';
@@ -681,6 +723,7 @@ class PetFormData {
     nameController.dispose();
     breedController.dispose();
     weightController.dispose();
+    heightController.dispose();
     ageController.dispose();
     notesController.dispose();
   }

@@ -4,8 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../services/FirebaseService.dart';
-import 'map_picker_screen.dart';
 
 class AppointmentDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? appointment;
@@ -34,6 +36,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   
   List<Map<String, dynamic>> _availablePets = [];
   bool _isLoadingPets = true;
+
+  // Map picker variables
+  static const String _geoapifyApiKey = '7c0100b7e4614f859ec61a564091807b';
+  double _selectedLat = 10.762622;
+  double _selectedLon = 106.660172;
+  bool _isSearchingLocation = false;
+  List<Map<String, dynamic>> _searchResults = [];
 
   @override
   void initState() {
@@ -280,18 +289,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                   // Location
                   _buildSectionTitle('Địa điểm', Icons.location_on),
                   const SizedBox(height: 8),
-                  _buildTextField(
-                    controller: _locationController,
-                    hint: 'Nhập địa điểm',
-                    icon: Icons.location_on,
-                    suffixIcon: IconButton(
-                      icon: const Icon(
-                        Icons.map,
-                        color: Color(0xFF8E97FD),
-                      ),
-                      onPressed: _openMapPicker,
-                    ),
-                  ),
+                  _buildLocationPicker(),
                   const SizedBox(height: 20),
 
                   // Note
@@ -498,36 +496,331 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     }
   }
 
-  Future<void> _openMapPicker() async {
+  // Map picker methods
+  Future<void> _searchLocationGeoapify(String query) async {
+    if (query.isEmpty) return;
+
+    if (mounted) setState(() => _isSearchingLocation = true);
+
     try {
-      final selectedAddress = await Navigator.push<String>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MapPickerScreen(
-            initialAddress: _locationController.text,
-          ),
-        ),
+      final url = Uri.parse(
+        'https://api.geoapify.com/v1/geocode/search?text=${Uri.encodeComponent(query)}&apiKey=$_geoapifyApiKey'
       );
 
-      if (selectedAddress != null && selectedAddress.isNotEmpty) {
-        setState(() {
-          _locationController.text = selectedAddress;
-        });
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout: Không thể kết nối server');
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['features'] != null && data['features'].isNotEmpty) {
+          if (!mounted) return;
+          
+          setState(() {
+            _searchResults = (data['features'] as List).map((f) {
+              final p = f['properties'];
+              return {
+                'lat': p['lat'] ?? 10.762622,
+                'lon': p['lon'] ?? 106.660172,
+                'formatted': p['formatted'] ?? '',
+                'name': p['name'] ?? '',
+                'city': p['city'] ?? '',
+              };
+            }).toList();
+          });
+        } else {
+          if (!mounted) return;
+          setState(() {
+            _searchResults = [];
+          });
+          _showLocationError('Không tìm thấy địa điểm');
+        }
+      } else {
+        throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error opening map: $e');
+      print('Error search: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Không thể mở bản đồ. Vui lòng nhập địa chỉ thủ công.',
-              style: GoogleFonts.afacad(),
-            ),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        setState(() {
+          _searchResults = [];
+        });
+        _showLocationError('Lỗi tìm kiếm: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSearchingLocation = false);
       }
     }
+  }
+
+  Future<void> _getCurrentLocationGPS() async {
+    if (!mounted) return;
+    setState(() => _isSearchingLocation = true);
+    
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) _showLocationError('Bạn cần cấp quyền truy cập vị trí');
+          if (mounted) setState(() => _isSearchingLocation = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showGPSPermissionDialog();
+        if (mounted) setState(() => _isSearchingLocation = false);
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 5),
+      ).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw Exception('GPS timeout');
+        },
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _selectedLat = position.latitude;
+        _selectedLon = position.longitude;
+      });
+
+      await _reverseGeocodeLocation(_selectedLat, _selectedLon);
+    } catch (e) {
+      print('Location Error: $e');
+      if (mounted) {
+        _showLocationError('Không thể lấy vị trí.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSearchingLocation = false);
+      }
+    }
+  }
+
+  Future<void> _reverseGeocodeLocation(double lat, double lon) async {
+    try {
+      final url = Uri.parse(
+        'https://api.geoapify.com/v1/geocode/reverse?lat=$lat&lon=$lon&apiKey=$_geoapifyApiKey'
+      );
+
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout');
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['features'] != null && data['features'].isNotEmpty) {
+          final props = data['features'][0]['properties'];
+          
+          if (!mounted) return;
+          
+          setState(() {
+            _locationController.text = props['formatted'] ?? 
+                              '${props['street'] ?? ''}, ${props['city'] ?? ''}';
+            _searchResults.clear();
+          });
+        }
+      }
+    } catch (e) {
+      print('Error reverse: $e');
+      if (mounted) {
+        _showLocationError('Không xác định được địa chỉ');
+      }
+    }
+  }
+
+  void _selectSearchResult(Map<String, dynamic> result) {
+    setState(() {
+      _selectedLat = result['lat'];
+      _selectedLon = result['lon'];
+      _locationController.text = result['formatted'];
+      _searchResults.clear();
+    });
+  }
+
+  void _showLocationError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.afacad()),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _showGPSPermissionDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          'Cần quyền vị trí',
+          style: GoogleFonts.afacad(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF22223B),
+          ),
+        ),
+        content: Text(
+          'Vui lòng bật quyền vị trí trong Cài đặt.',
+          style: GoogleFonts.afacad(color: const Color(0xFF22223B)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad()),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Geolocator.openLocationSettings();
+            },
+            child: Text(
+              'Mở Cài đặt',
+              style: GoogleFonts.afacad(
+                color: const Color(0xFF8E97FD),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationPicker() {
+    return Column(
+      children: [
+        // Location input
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6F6F6),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFF8E97FD).withOpacity(0.3),
+            ),
+          ),
+          child: TextField(
+            controller: _locationController,
+            style: GoogleFonts.afacad(fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'Tìm kiếm địa điểm...',
+              hintStyle: GoogleFonts.afacad(color: Colors.grey[400]),
+              prefixIcon: const Icon(Icons.location_on, color: Color(0xFF8E97FD)),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_locationController.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.grey),
+                      onPressed: () {
+                        _locationController.clear();
+                        setState(() => _searchResults.clear());
+                      },
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.my_location, color: Color(0xFF8E97FD)),
+                    onPressed: _getCurrentLocationGPS,
+                  ),
+                ],
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(16),
+            ),
+            onSubmitted: _searchLocationGeoapify,
+            textInputAction: TextInputAction.search,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Search results or loading
+        if (_isSearchingLocation)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8E97FD)),
+              ),
+            ),
+          ),
+        
+        if (_searchResults.isNotEmpty)
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F6F6),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF8E97FD).withOpacity(0.3),
+              ),
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _searchResults.length,
+              itemBuilder: (context, i) {
+                final r = _searchResults[i];
+                return ListTile(
+                  leading: const Icon(Icons.location_on, color: Color(0xFF8E97FD), size: 18),
+                  title: Text(
+                    r['name'] ?? r['formatted'],
+                    style: GoogleFonts.afacad(
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    r['formatted'],
+                    style: GoogleFonts.afacad(color: Colors.grey[600], fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => _selectSearchResult(r),
+                );
+              },
+            ),
+          ),
+        
+        // Show coordinates if location selected
+        if (_locationController.text.isNotEmpty && _searchResults.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF8E97FD).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFF8E97FD), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tọa độ: ${_selectedLat.toStringAsFixed(4)}, ${_selectedLon.toStringAsFixed(4)}',
+                    style: GoogleFonts.afacad(fontSize: 12, color: const Color(0xFF22223B)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 
   void _saveAppointment() {

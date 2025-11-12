@@ -1,6 +1,5 @@
 // lib/screens/diary_screen.dart - Unified Diary Screen with Full Features
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import './custom_bottom_nav.dart';
 import './trash_screen.dart';
@@ -1031,7 +1030,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     const SizedBox(height: 16),
                     // Category dropdown
                     DropdownButtonFormField<String>(
-                      value: selectedCategory,
+                      initialValue: selectedCategory,
                       decoration: InputDecoration(
                         labelText: 'Danh mục',
                         labelStyle: GoogleFonts.afacad(),
@@ -1052,7 +1051,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     const SizedBox(height: 16),
                     // Pet dropdown
                     DropdownButtonFormField<String>(
-                      value: selectedPetId,
+                      initialValue: selectedPetId,
                       decoration: InputDecoration(
                         labelText: 'Thú cưng',
                         labelStyle: GoogleFonts.afacad(),

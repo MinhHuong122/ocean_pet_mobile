@@ -70,13 +70,16 @@ class FirebaseService {
   // ==================== PETS ====================
 
   /// Thêm thú cưng mới
+  /// Các trường bắt buộc: name, type, gender, birthDate
+  /// Các trường khuyến khích: breed, weight, height, age, avatarUrl
   static Future<String> addPet({
     required String name,
     required String type,
+    required String gender,
+    required DateTime birthDate,
     String? breed,
-    int? age,
     double? weight,
-    String gender = 'unknown',
+    double? height,
     String? avatarUrl,
     String? notes,
   }) async {
@@ -84,14 +87,23 @@ class FirebaseService {
       final userId = currentUserId;
       if (userId == null) throw Exception('User not logged in');
 
+      // Tính tuổi từ ngày sinh
+      final now = DateTime.now();
+      int ageMonths = (now.year - birthDate.year) * 12 + (now.month - birthDate.month);
+      if (now.day < birthDate.day && ageMonths > 0) {
+        ageMonths--;
+      }
+
       final docRef = await _firestore.collection('pets').add({
         'user_id': userId,
         'name': name,
         'type': type,
         'breed': breed,
-        'age': age,
-        'weight': weight,
         'gender': gender,
+        'birth_date': birthDate,
+        'age': ageMonths, // Tuổi tính bằng tháng
+        'weight': weight,
+        'height': height,
         'avatar_url': avatarUrl,
         'notes': notes,
         'created_at': FieldValue.serverTimestamp(),

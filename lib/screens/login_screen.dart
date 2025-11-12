@@ -3,8 +3,10 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'dart:async';
 import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/services/AuthService.dart';
+import 'package:ocean_pet/services/QuickLoginService.dart';
 import 'package:ocean_pet/screens/welcome_screen.dart';
 import 'package:ocean_pet/screens/register_screen.dart';
+import 'package:ocean_pet/screens/forgot_password_screen.dart';
 import 'package:app_links/app_links.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -64,6 +66,19 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (result['success']) {
+        // Save credentials for quick login
+        try {
+          await QuickLoginService.saveCredentials(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            enableBiometric: false, // User can enable it later in settings
+          );
+          print('✅ [LoginScreen] Credentials saved for quick login');
+        } catch (e) {
+          print('⚠️ [LoginScreen] Failed to save credentials: $e');
+          // Continue anyway, not critical
+        }
+
         if (mounted) {
           // Luôn chuyển về WelcomeScreen, logic kiểm tra pet sẽ ở đó
           Navigator.of(context).pushReplacement(
@@ -370,14 +385,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 16),
 
-              // Forgot password
+              // Forgot password - Make it clickable
               Center(
-                child: Text(
-                  'Quên mật khẩu?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontFamily: R.font.sfpro,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (context) => const ForgotPasswordScreen()),
+                    );
+                  },
+                  child: Text(
+                    'Quên mật khẩu?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: const Color(0xFF8B5CF6),
+                      fontWeight: FontWeight.w500,
+                      fontFamily: R.font.sfpro,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
               ),
