@@ -157,11 +157,147 @@ service cloud.firestore {
       allow update, delete: if isResourceOwner();
     }
 
+    // ==================== CONVERSATIONS COLLECTION ====================
+    // Users can only access conversations they're part of
+    function isConversationParticipant() {
+      return isAuthenticated() && 
+             (request.auth.uid == resource.data.participant_1 || 
+              request.auth.uid == resource.data.participant_2);
+    }
+    
+    function isConversationParticipantRequest() {
+      return isAuthenticated() && 
+             (request.auth.uid == request.resource.data.participant_1 || 
+              request.auth.uid == request.resource.data.participant_2);
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isConversationParticipant();
+      allow create: if isConversationParticipantRequest();
+      allow update: if isConversationParticipant();
+      
+      // Messages subcollection - allow authenticated users who are conversation participants
+      match /messages/{messageId} {
+        allow read: if isConversationParticipant();
+        allow create: if isConversationParticipant() && request.resource.data.sender_id == request.auth.uid;
+        allow update: if isConversationParticipant() && resource.data.sender_id == request.auth.uid;
+        allow delete: if isConversationParticipant() && resource.data.sender_id == request.auth.uid;
+        
+        // Reactions subcollection
+        match /reactions/{reactionId} {
+          allow read: if isConversationParticipant();
+          allow create, update, delete: if isConversationParticipant();
+        }
+      }
+      
+      // Typing indicators subcollection
+      match /typing_indicators/{userId} {
+        allow read: if isConversationParticipant();
+        allow create, update, delete: if isConversationParticipant() && userId == request.auth.uid;
+      }
+    }
+
     // ==================== OTP REQUESTS COLLECTION ====================
     // Allow creating OTP requests without authentication (for forgot password)
     match /otp_requests/{otpId} {
       allow create: if true; // Anyone can create OTP request
       allow read, update: if resource.data.email == request.auth.email || request.auth == null;
+    }
+
+    // ==================== DATING PROFILES COLLECTION ====================
+    // Users can access dating profiles for discovery
+    match /users/{userId}/dating_profiles/{petId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update, delete: if isOwner(userId);
+    }
+
+    // ==================== DATING LIKES COLLECTION ====================
+    // Users can manage their likes
+    match /users/{userId}/likes/{targetId} {
+      allow read, create, update, delete: if isOwner(userId);
+    }
+
+    // ==================== DATING MATCHES COLLECTION ====================
+    // Users can manage their matches
+    match /users/{userId}/matches/{matchId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if isOwner(userId);
+    }
+
+    // ==================== BLOCKED USERS COLLECTION ====================
+    // Users can manage their blocked users list
+    match /users/{userId}/blocked_users/{blockedUserId} {
+      allow read, create, delete: if isOwner(userId);
+    }
+
+    // ==================== REPORTS COLLECTION ====================
+    // Users can create reports, admins can read
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated(); // In production, restrict to admins
+    }
+
+    // ==================== COMMUNITY COLLECTION ====================
+    // Communities are public, but only members can create posts
+    match /communities/{communityId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      
+      // Community posts subcollection
+      match /posts/{postId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+        allow update, delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+        
+        // Comments subcollection
+        match /comments/{commentId} {
+          allow read: if isAuthenticated();
+          allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+          allow update, delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+        }
+        
+        // Likes subcollection
+        match /likes/{userId} {
+          allow read, create, delete: if isAuthenticated() && userId == request.auth.uid;
+        }
+      }
+    }
+
+    // ==================== EVENTS COLLECTION ====================
+    // Events are public, anyone authenticated can view
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Any user can create events
+      allow update, delete: if isAuthenticated() && resource.data.creator_id == request.auth.uid;
+      
+      // Event attendees subcollection
+      match /attendees/{userId} {
+        allow read: if isAuthenticated();
+        allow create, delete: if isAuthenticated() && userId == request.auth.uid;
+      }
+    }
+
+    // ==================== TRAINING VIDEOS COLLECTION ====================
+    // Training videos are public
+    match /training_videos/{videoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Any user can upload (should restrict to trainers in prod)
+      allow update, delete: if isAuthenticated() && resource.data.uploader_id == request.auth.uid;
+      
+      // Video ratings subcollection
+      match /ratings/{userId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isAuthenticated() && userId == request.auth.uid;
+      }
+    }
+
+    // ==================== TRENDING TOPICS COLLECTION ====================
+    // Public trending topics
+    match /trending_topics/{topicId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated(); // System-generated in prod
     }
   }
 }

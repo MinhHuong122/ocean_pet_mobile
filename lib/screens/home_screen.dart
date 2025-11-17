@@ -4,6 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import './custom_bottom_nav.dart'; // Correct import for widgets directory
 import './ai_chat_screen.dart';
 import './contact_screen.dart';
+import './community_screen_new.dart';
+import './news_screen.dart';
+import './training_screen_new.dart';
+import './events_screen_new.dart';
+import './dating_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({Key? key}) : super(key: key);
@@ -116,7 +121,14 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NewsScreen(),
+                          ),
+                        );
+                      },
                       child: Text('Xem tất cả ...',
                           style: GoogleFonts.afacad(
                               color: const Color(0xFF8E97FD))),
@@ -295,8 +307,8 @@ class _MenuIconRowState extends State<MenuIconRow> {
       'icon': 'lib/res/drawables/setting/social.png',
     },
     {
-      'label': 'Tin tức',
-      'icon': 'lib/res/drawables/setting/news.png',
+      'label': 'Hẹn hò',
+      'icon': 'lib/res/drawables/setting/dating.png',
     },
     {
       'label': 'Huấn luyện',
@@ -336,6 +348,7 @@ class _MenuIconRowState extends State<MenuIconRow> {
     final bool isAll = index == 0;
     final Color selectedColor = const Color(0xFF8E97FD);
     final Color unselectedColor = Color.fromARGB(255, 177, 181, 201);
+    
     return GestureDetector(
       onTap: () {
         if (isAll) {
@@ -351,6 +364,9 @@ class _MenuIconRowState extends State<MenuIconRow> {
           setState(() {
             selectedIndex = index;
           });
+          
+          // Navigate to corresponding screen
+          _navigateToScreen(index);
         }
       },
       child: Padding(
@@ -389,6 +405,33 @@ class _MenuIconRowState extends State<MenuIconRow> {
           ],
         ),
       ),
+    );
+  }
+  
+  void _navigateToScreen(int index) {
+    final context = this.context;
+    late Widget screen;
+    
+    switch (index) {
+      case 1:
+        screen = const CommunityScreen();
+        break;
+      case 2:
+        screen = const DatingScreen();
+        break;
+      case 3:
+        screen = const TrainingScreenNew();
+        break;
+      case 4:
+        screen = const EventsScreenNew();
+        break;
+      default:
+        return;
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
     );
   }
 }

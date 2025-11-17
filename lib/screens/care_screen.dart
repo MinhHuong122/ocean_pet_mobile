@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import './custom_bottom_nav.dart';
 import './appointment_detail_screen.dart';
 import './nutrition_screen.dart';
-import './training_video_screen.dart';
+import './training_screen.dart';
 
 class CareScreen extends StatefulWidget {
   const CareScreen({super.key});
@@ -150,11 +150,11 @@ class _CareScreenState extends State<CareScreen> {
                       () => _showNutritionDialog(),
                     ),
                     _buildServiceCard(
-                      'Huấn luyện',
-                      Icons.school,
-                      const Color(0xFFAB47BC),
-                      'Khóa học',
-                      () => _showTrainingDialog(),
+                      'Hồ sơ y tế',
+                      Icons.description,
+                      const Color(0xFF8B5CF6),
+                      'Lịch sử bệnh lý',
+                      () => _showMedicalRecordsDialog(),
                     ),
                     _buildServiceCard(
                       'Khẩn cấp',
@@ -384,11 +384,11 @@ class _CareScreenState extends State<CareScreen> {
     );
   }
 
-  void _showTrainingDialog() {
+  void _showMedicalRecordsDialog() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const TrainingVideoScreen(),
+        builder: (context) => const TrainingScreen(),
       ),
     );
   }

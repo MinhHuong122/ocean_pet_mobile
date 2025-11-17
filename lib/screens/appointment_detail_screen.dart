@@ -34,6 +34,11 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   String? _selectedPetId;
   String? _selectedPetName;
   
+  // Recurring and Reminder variables
+  bool _isRecurring = false;
+  String _recurringCycle = 'monthly'; // monthly, quarterly, biannual, yearly
+  String _reminderTime = '1day'; // 1day, 3days, 1week
+  
   List<Map<String, dynamic>> _availablePets = [];
   bool _isLoadingPets = true;
 
@@ -300,6 +305,169 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     hint: 'Thêm ghi chú...',
                     icon: Icons.note,
                     maxLines: 4,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Recurring Section
+                  _buildSectionTitle('Lặp lại sự kiện', Icons.repeat),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F6F6),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF8E97FD).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Bật lặp lại',
+                              style: GoogleFonts.afacad(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF22223B),
+                              ),
+                            ),
+                            Switch(
+                              value: _isRecurring,
+                              onChanged: (value) {
+                                setState(() => _isRecurring = value);
+                              },
+                              activeColor: const Color(0xFF8B5CF6),
+                            ),
+                          ],
+                        ),
+                        if (_isRecurring) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            'Chu kỳ lặp lại',
+                            style: GoogleFonts.afacad(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: _recurringCycle,
+                                icon: const Icon(Icons.arrow_drop_down,
+                                    color: Color(0xFF8B5CF6)),
+                                style: GoogleFonts.afacad(
+                                  fontSize: 14,
+                                  color: const Color(0xFF22223B),
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'monthly',
+                                    child: Text('Hàng tháng',
+                                        style: GoogleFonts.afacad()),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'quarterly',
+                                    child: Text('3 tháng 1 lần',
+                                        style: GoogleFonts.afacad()),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'biannual',
+                                    child: Text('6 tháng 1 lần',
+                                        style: GoogleFonts.afacad()),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'yearly',
+                                    child: Text('Hàng năm',
+                                        style: GoogleFonts.afacad()),
+                                  ),
+                                ].toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _recurringCycle = value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Reminder Section
+                  _buildSectionTitle('Nhắc nhở', Icons.notifications),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F6F6),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF8E97FD).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Thời gian nhắc trước',
+                          style: GoogleFonts.afacad(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildReminderButton('1 ngày', '1day'),
+                            _buildReminderButton('3 ngày', '3days'),
+                            _buildReminderButton('1 tuần', '1week'),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline,
+                                  color: Color(0xFF8B5CF6), size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Bạn sẽ nhận được thông báo ${_reminderTimeText(_reminderTime)} trước lịch hẹn',
+                                  style: GoogleFonts.afacad(
+                                    fontSize: 12,
+                                    color: const Color(0xFF22223B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 32),
                 ],
@@ -855,9 +1023,55 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         _selectedTime.hour,
         _selectedTime.minute,
       ).toIso8601String(),
+      // New fields for recurring and reminder
+      'isRecurring': _isRecurring,
+      'recurringCycle': _recurringCycle,
+      'reminderTime': _reminderTime,
     };
 
     widget.onSave(appointment);
     Navigator.pop(context);
+  }
+
+  Widget _buildReminderButton(String label, String value) {
+    final isSelected = _reminderTime == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _reminderTime = value);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF8B5CF6)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFF8B5CF6).withOpacity(0.3),
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.afacad(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF22223B),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _reminderTimeText(String value) {
+    switch (value) {
+      case '1day':
+        return '1 ngày';
+      case '3days':
+        return '3 ngày';
+      case '1week':
+        return '1 tuần';
+      default:
+        return '1 ngày';
+    }
   }
 }
