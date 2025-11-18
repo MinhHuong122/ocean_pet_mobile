@@ -193,18 +193,17 @@ class TrainingService {
 
       await db.runTransaction((transaction) async {
         // Check if user already rated this video
-        final existingRatingQuery = await transaction.get(
-          db
-              .collection('training_videos')
-              .doc(videoId)
-              .collection('ratings')
-              .where('user_id', isEqualTo: user.uid),
-        );
+        final existingRatingSnapshot = await db
+            .collection('training_videos')
+            .doc(videoId)
+            .collection('ratings')
+            .where('user_id', isEqualTo: user.uid)
+            .get();
 
-        if (existingRatingQuery.docs.isNotEmpty) {
+        if (existingRatingSnapshot.docs.isNotEmpty) {
           // Update existing rating
-          final oldRating = existingRatingQuery.docs.first.data()['rating'];
-          transaction.update(existingRatingQuery.docs.first.reference, {
+          final oldRating = existingRatingSnapshot.docs.first.data()['rating'];
+          transaction.update(existingRatingSnapshot.docs.first.reference, {
             'rating': rating,
             'updated_at': FieldValue.serverTimestamp(),
           });
@@ -227,8 +226,9 @@ class TrainingService {
 
           // Get current video data
           final videoData = await transaction.get(videoRef);
-          final currentRating = (videoData.data()?['rating'] ?? 0.0).toDouble();
-          final ratingCount = (videoData.data()?['rating_count'] ?? 0) as int;
+          final data = videoData.data() as Map<String, dynamic>?;
+          final currentRating = (data?['rating'] ?? 0.0).toDouble();
+          final ratingCount = (data?['rating_count'] ?? 0) as int;
 
           // Calculate new average
           final newAverage =
@@ -255,8 +255,9 @@ class TrainingService {
   ) async {
     try {
       final videoData = await transaction.get(videoRef);
-      final currentRating = (videoData.data()?['rating'] ?? 0.0).toDouble();
-      final ratingCount = (videoData.data()?['rating_count'] ?? 0) as int;
+      final data = videoData.data() as Map<String, dynamic>?;
+      final currentRating = (data?['rating'] ?? 0.0).toDouble();
+      final ratingCount = (data?['rating_count'] ?? 0) as int;
 
       // Recalculate average: remove old, add new
       final newAverage = (currentRating * ratingCount - oldRating + newRating) /

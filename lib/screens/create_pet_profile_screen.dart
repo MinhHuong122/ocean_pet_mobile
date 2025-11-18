@@ -52,18 +52,30 @@ class _CreatePetProfileScreenState extends State<CreatePetProfileScreen> {
   }
 
   Future<void> _pickImage(PetFormData form) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
 
-    if (image != null) {
-      setState(() {
-        form.imageFile = File(image.path);
-      });
+      if (image != null && mounted) {
+        setState(() {
+          form.imageFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi chọn ảnh: $e'),
+            backgroundColor: const Color(0xFFEF5350),
+          ),
+        );
+      }
     }
   }
 

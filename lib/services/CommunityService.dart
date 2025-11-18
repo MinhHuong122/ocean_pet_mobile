@@ -40,9 +40,9 @@ class CommunityService {
   }
 
   /// Get stream of community posts ordered by creation date
-  static Stream<List<Map<String, dynamic>>> getCommunityPosts(
+  static Stream<List<Map<String, dynamic>>> getCommunityPosts({
     String communityId = _defaultCommunityId,
-  ) {
+  }) {
     try {
       return FirebaseFirestore.instance
           .collection('communities')
@@ -256,9 +256,9 @@ class CommunityService {
   // ==================== TRENDING & SEARCH ====================
 
   /// Get stream of trending topics
-  static Stream<List<Map<String, dynamic>>> getTrendingTopics(
+  static Stream<List<Map<String, dynamic>>> getTrendingTopics({
     String communityId = _defaultCommunityId,
-  ) {
+  }) {
     try {
       return FirebaseFirestore.instance
           .collection('trending_topics')
@@ -287,7 +287,7 @@ class CommunityService {
   }) {
     try {
       if (keyword.isEmpty) {
-        return getCommunityPosts(communityId);
+        return getCommunityPosts(communityId: communityId);
       }
 
       return FirebaseFirestore.instance

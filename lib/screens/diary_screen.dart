@@ -1112,18 +1112,20 @@ class _DiaryScreenState extends State<DiaryScreen> {
                           : null,
                     );
                     
-                    setState(() {
-                      diaryEntries.insert(0, newEntry);
-                    });
-                    _saveDiaryEntries();
-                    
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Đã thêm hoạt động mới', style: GoogleFonts.afacad()),
-                        backgroundColor: const Color(0xFF66BB6A),
-                      ),
-                    );
+                    if (mounted) {
+                      setState(() {
+                        diaryEntries.insert(0, newEntry);
+                      });
+                      _saveDiaryEntries();
+                      
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Đã thêm hoạt động mới', style: GoogleFonts.afacad()),
+                          backgroundColor: const Color(0xFF66BB6A),
+                        ),
+                      );
+                    }
                   },
                   child: Text('Thêm', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
                 ),
@@ -2260,7 +2262,9 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             if (_highlightColor != null)
               TextButton(
                 onPressed: () {
-                  setState(() => _highlightColor = null);
+                  if (mounted) {
+                    setState(() => _highlightColor = null);
+                  }
                   Navigator.pop(context);
                 },
                 child: Text('Xóa', style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
@@ -2273,7 +2277,9 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
           children: colors.map((color) {
             return GestureDetector(
               onTap: () {
-                setState(() => _highlightColor = color);
+                if (mounted) {
+                  setState(() => _highlightColor = color);
+                }
                 Navigator.pop(context);
               },
               child: Container(
@@ -2301,22 +2307,30 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
   
   Future<void> _takePhoto() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-    if (image != null) {
-      setState(() {
-        widget.entry.images = [...widget.entry.images, image.path];
-        _saveChanges();
-      });
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+      if (image != null && mounted) {
+        setState(() {
+          widget.entry.images = [...widget.entry.images, image.path];
+          _saveChanges();
+        });
+      }
+    } catch (e) {
+      print('Error taking photo: $e');
     }
   }
   
   Future<void> _addImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        widget.entry.images = [...widget.entry.images, image.path];
-        _saveChanges();
-      });
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null && mounted) {
+        setState(() {
+          widget.entry.images = [...widget.entry.images, image.path];
+          _saveChanges();
+        });
+      }
+    } catch (e) {
+      print('Error adding image: $e');
     }
   }
   

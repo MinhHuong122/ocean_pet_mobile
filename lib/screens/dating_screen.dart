@@ -133,15 +133,16 @@ class _DatingScreenState extends State<DatingScreen>
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 70,
         title: Text(
           'Hẹn hò thú cưng',
           style: GoogleFonts.afacad(
-            fontSize: 24,
+            fontSize: 26,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF22223B),
+            color: Colors.black,
           ),
         ),
-        centerTitle: false,
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: const Color(0xFF8B5CF6),
