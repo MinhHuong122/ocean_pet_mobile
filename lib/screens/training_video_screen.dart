@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import './youtube_player_screen.dart';
 
 class TrainingVideoScreen extends StatefulWidget {
   const TrainingVideoScreen({super.key});
@@ -275,7 +276,7 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Video huấn luyện',
+          'Huấn luyện',
           style: GoogleFonts.afacad(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -456,7 +457,7 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
       child: InkWell(
         onTap: () {
           _incrementViews(video['id']);
-          _openVideo(video['url']);
+          _openYoutubePlayer(video['url'], video['title']);
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
@@ -945,32 +946,16 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
     );
   }
 
-  Future<void> _openVideo(String urlString) async {
-    try {
-      final Uri url = Uri.parse(urlString);
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Không thể mở video',
-                style: GoogleFonts.afacad(),
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: $e', style: GoogleFonts.afacad()),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+  void _openYoutubePlayer(String videoUrl, String videoTitle) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => YoutubePlayerScreen(
+          videoUrl: videoUrl,
+          videoTitle: videoTitle,
+        ),
+      ),
+    );
   }
 
   void _showDonateDialog() {

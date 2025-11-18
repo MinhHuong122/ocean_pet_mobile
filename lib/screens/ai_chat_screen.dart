@@ -22,6 +22,20 @@ class _AIChatScreenState extends State<AIChatScreen> {
   static const String _apiKey = 'AIzaSyAOkwaRgulW9Vu-8rHADj6Ugeb6qcf1BQ8';
   static const String _apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
+  // Hàm loại bỏ markdown
+  String cleanMarkdown(String text) {
+    return text
+        .replaceAll(RegExp(r'\*\*(.*?)\*\*'), r'$1')  // **bold**
+        .replaceAll(RegExp(r'__(.*?)__'), r'$1')      // __bold__
+        .replaceAll(RegExp(r'\*(.*?)\*'), r'$1')      // *italic*
+        .replaceAll(RegExp(r'_(.*?)_'), r'$1')        // _italic_
+        .replaceAll(RegExp(r'`(.*?)`'), r'$1')        // `code`
+        .replaceAll(RegExp(r'#{1,6}\s'), '')         // # headers
+        .replaceAll(RegExp(r'!\[.*?\]\((.*?)\)'), '(ảnh)') // images
+        .replaceAll(RegExp(r'\[.*?\]\((.*?)\)'), r'$1')    // links
+        .trim();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -105,6 +119,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
               'parts': [
                 {
                   'text': 'Bạn là trợ lý AI chuyên về chăm sóc thú cưng của ứng dụng Ocean Pet. '
+                      'QUAN TRỌNG: Tuyệt đối không dùng định dạng markdown như **, __, *, _, `, [], (), ###, > trong câu trả lời. '
+                      'Chỉ trả lời bằng văn bản thuần túy, không in đậm, không in nghiêng, không code block. '
                       'Hãy trả lời câu hỏi sau một cách hữu ích và thân thiện bằng tiếng Việt: $message'
                 }
               ]
@@ -122,7 +138,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['candidates'][0]['content']['parts'][0]['text'];
-        return text ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này lúc này. Bạn có thể thử hỏi câu khác không?';
+        return cleanMarkdown(text ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này lúc này. Bạn có thể thử hỏi câu khác không?');
       } else {
         // Trả lời thân thiện thay vì hiển thị lỗi kỹ thuật
         return 'Xin lỗi, hiện tại tôi đang gặp chút vấn đề kỹ thuật. Bạn có thể thử lại sau một chút được không? 🙏';

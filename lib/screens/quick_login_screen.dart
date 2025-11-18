@@ -2,11 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/QuickLoginService.dart';
-import 'package:ocean_pet/screens/welcome_screen.dart';
+import 'package:ocean_pet/screens/home_screen.dart';
 import 'package:ocean_pet/screens/login_screen.dart';
 import 'package:ocean_pet/screens/forgot_password_screen.dart';
 import 'package:local_auth/local_auth.dart';
 
+/// Màn hình đăng nhập nhanh với Sinh Trắc Học (Face ID / Vân tay)
+/// 
+/// QUAN TRỌNG: Giao diện sinh trắc học do HỆ ĐIỀU HÀNH tự hiển thị
+/// - Android: BiometricPrompt (popup xanh chuẩn Material Design)
+/// - iOS: Face ID/Touch ID (popup trắng chuẩn Apple)
+/// 
+/// KHÔNG cần tự code UI sinh trắc học! Chỉ gọi QuickLoginService.authenticateWithBiometric()
+/// hoặc BiometricHelper.authenticate() là popup tự động hiện.
+/// 
+/// Xem hướng dẫn chi tiết: BIOMETRIC_GUIDE.md
+/// Demo: lib/screens/biometric_demo_screen.dart
 class QuickLoginScreen extends StatefulWidget {
   const QuickLoginScreen({super.key});
 
@@ -84,14 +95,9 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
         _availableBiometrics = availableBiometrics;
       });
 
-      // Nếu biometric enabled, thử tự động authenticate
-      if (_isBiometricEnabled && _isBiometricAvailable && _savedEmail != null) {
-        print('[QuickLogin] Starting biometric authentication...');
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          _authenticateWithBiometric();
-        }
-      }
+      // Không tự động chạy biometric khi vào màn hình
+      // User sẽ phải nhấn nút để kích hoạt
+      print('[QuickLogin] Biometric ready but waiting for user action');
     } catch (e) {
       print('❌ [QuickLogin] Error initializing: $e');
     }
@@ -103,31 +109,66 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
         _isLoading = true;
       });
 
+      // Check if biometric is available on device
+      if (!_isBiometricAvailable) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Thiết bị chưa thiết lập sinh trắc học. Vui lòng vào Cài đặt > Bảo mật để kích hoạt vân tay/Face ID',
+                      style: TextStyle(fontFamily: R.font.sfpro),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
       final isAuthenticated =
           await QuickLoginService.authenticateWithBiometric();
 
       if (isAuthenticated) {
-        // Lấy thông tin đăng nhập từ secure storage
-        final credentials =
-            await QuickLoginService.getCredentials();
-
-        if (credentials != null) {
-          // Đăng nhập với stored credentials
-          _performLogin(credentials['email']!, credentials['password']!);
-        } else {
+        // Xác thực sinh trắc học thành công
+        print('✅ [QuickLogin] Biometric authentication successful');
+        
+        // Lấy credentials để đăng nhập
+        final credentials = await QuickLoginService.getCredentials();
+        print('🔍 [QuickLogin] Retrieved credentials: ${credentials != null ? "Email: ${credentials['email']}, Has password: ${credentials['password'] != null && credentials['password']!.isNotEmpty}" : "null"}');
+        
+        if (credentials == null || credentials['password'] == null || credentials['password']!.isEmpty) {
+          // Không có password (OAuth user) - không thể đăng nhập lại
+          print('❌ [QuickLogin] OAuth user detected - cannot auto-login');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text(
-                    'Không thể lấy thông tin đăng nhập. Vui lòng đăng nhập lại.'),
-                backgroundColor: Colors.red,
+                content: Text('Tài khoản Google/Facebook cần đăng nhập lại. Vui lòng quay lại màn hình đăng nhập.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 4),
               ),
             );
           }
           setState(() {
             _isLoading = false;
           });
+          return;
         }
+        
+        // Email/password user - đăng nhập bình thường
+        print('🔐 [QuickLogin] Email/password user - logging in with credentials: ${credentials['email']}');
+        _performLogin(credentials['email']!, credentials['password']!);
       } else {
         setState(() {
           _isLoading = false;
@@ -181,6 +222,11 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
       return;
     }
 
+    // Proceed with password login
+    setState(() {
+      _isLoading = true;
+    });
+
     print('[QuickLogin] Logging in with email: $_savedEmail');
     _performLogin(_savedEmail!, _passwordController.text);
   }
@@ -194,13 +240,27 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
       final result = await AuthService.login(email, password);
 
       if (result['success']) {
+        // Save credentials for next quick login (only if password is provided)
+        if (password.isNotEmpty) {
+          try {
+            await QuickLoginService.saveCredentials(
+              email: email,
+              password: password,
+              enableBiometric: false, // Keep biometric setting as-is
+            );
+            print('✅ [QuickLogin] Credentials saved after successful login');
+          } catch (e) {
+            print('❌ [QuickLogin] Failed to save credentials: $e');
+          }
+        }
+        
         // Record login time for 15-minute session
         await QuickLoginService.recordLoginTime();
         
         if (mounted) {
-          // Chuyển sang WelcomeScreen
+          // Chuyển sang HomeScreen
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+            MaterialPageRoute(builder: (context) => HomeScreen()),
             (route) => false,
           );
         }
@@ -295,6 +355,8 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
                 const SizedBox(height: 40),
 
                 // Biometric option - ALWAYS show button
+                // Giao diện sinh trắc học sẽ do hệ điều hành hiển thị (Android BiometricPrompt / iOS LocalAuthentication)
+                // Không cần tự code UI, chỉ cần gọi local_auth.authenticate()
                 Column(
                   children: [
                     SizedBox(
@@ -304,7 +366,9 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
                         onPressed:
                             _isLoading ? null : _authenticateWithBiometric,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B5CF6),
+                          backgroundColor: _isBiometricAvailable 
+                              ? const Color(0xFF8B5CF6)
+                              : Colors.grey,
                           disabledBackgroundColor:
                               const Color(0xFF8B5CF6).withOpacity(0.5),
                           shape: RoundedRectangleBorder(
@@ -323,15 +387,18 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
                               )
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     _getBiometricIcon(),
-                                    size: 48,
+                                    size: 36,
                                     color: Colors.white,
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 8),
                                   Text(
-                                    'ĐĂNG NHẬP VỚI ${_getBiometricLabel().toUpperCase()}',
+                                    _isBiometricAvailable
+                                        ? 'ĐĂNG NHẬP VỚI ${_getBiometricLabel().toUpperCase()}'
+                                        : 'SINH TRẮC HỌC KHÔNG KHẢ DỤNG',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 12,
@@ -340,6 +407,19 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
                                       fontFamily: R.font.sfpro,
                                     ),
                                   ),
+                                  if (!_isBiometricAvailable)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'Hãy thiết lập sinh trắc học trong cài đặt thiết bị',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: Colors.white.withOpacity(0.8),
+                                          fontFamily: R.font.sfpro,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                       ),

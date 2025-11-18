@@ -44,7 +44,7 @@ android {
 
     defaultConfig {
         applicationId "com.oceanpet.ocean_pet_new"
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion flutter.minSdkVersion  // Required for biometric authentication (Android 6.0+)
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

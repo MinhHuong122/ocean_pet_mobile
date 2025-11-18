@@ -124,6 +124,19 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final result = await AuthService.loginWithGoogle();
       if (result['success']) {
+        // Save email for quick login (Google login - no password needed)
+        try {
+          final user = AuthService.getCurrentUser();
+          if (user != null && user.email != null) {
+            // For OAuth login, only save email (no password)
+            await QuickLoginService.saveEmailForQuickLogin(user.email!);
+            await QuickLoginService.enableBiometric();
+            print('✅ [LoginScreen] Google email saved for quick login: ${user.email}');
+          }
+        } catch (e) {
+          print('❌ [LoginScreen] Failed to save Google email: $e');
+        }
+        
         // Record login time for 15-minute session
         await QuickLoginService.recordLoginTime();
         
@@ -168,6 +181,19 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final result = await AuthService.loginWithFacebook();
       if (result['success']) {
+        // Save email for quick login (Facebook login - no password needed)
+        try {
+          final user = AuthService.getCurrentUser();
+          if (user != null && user.email != null) {
+            // For OAuth login, only save email (no password)
+            await QuickLoginService.saveEmailForQuickLogin(user.email!);
+            await QuickLoginService.enableBiometric();
+            print('✅ [LoginScreen] Facebook email saved for quick login: ${user.email}');
+          }
+        } catch (e) {
+          print('❌ [LoginScreen] Failed to save Facebook email: $e');
+        }
+        
         // Record login time for 15-minute session
         await QuickLoginService.recordLoginTime();
         

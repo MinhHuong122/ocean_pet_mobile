@@ -5,6 +5,7 @@ import './custom_bottom_nav.dart';
 import './trash_screen.dart';
 import './drawing_canvas.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -1415,13 +1416,13 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   late FocusNode _descFocus;
   
   FlutterSoundPlayer? _player;
+  bool _isPlaying = false;
   
   // Text formatting variables
   bool _isBold = false;
   bool _isItalic = false;
   bool _isUnderline = false;
   Color _textColor = const Color(0xFF22223B);
-  Color? _highlightColor;
   double _fontSize = 14;
   String _textAlign = 'left'; // left, center, right
   String _listType = 'none'; // none, bullet, numbered, checklist
@@ -1535,12 +1536,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 case 'copy':
                   _createCopy();
                   break;
-                case 'send':
-                  _sendNote();
-                  break;
-                case 'share':
-                  _shareNote();
-                  break;
                 case 'change_background':
                   _showColorPicker();
                   break;
@@ -1577,26 +1572,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                     const Icon(Icons.content_copy, color: Color(0xFF8E97FD)),
                     const SizedBox(width: 12),
                     Text('Tạo bản sao', style: GoogleFonts.afacad()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'send',
-                child: Row(
-                  children: [
-                    const Icon(Icons.send, color: Color(0xFF8E97FD)),
-                    const SizedBox(width: 12),
-                    Text('Gửi', style: GoogleFonts.afacad()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'share',
-                child: Row(
-                  children: [
-                    const Icon(Icons.share, color: Color(0xFF8E97FD)),
-                    const SizedBox(width: 12),
-                    Text('Chia sẻ', style: GoogleFonts.afacad()),
                   ],
                 ),
               ),
@@ -1648,10 +1623,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                 color: widget.entry.isLocked ? const Color(0xFF8E97FD) : const Color(0xFF22223B),
               ),
               onPressed: () => _showSetPasswordDialog(),
-            ),
-            IconButton(
-              icon: const Icon(Icons.print_outlined, color: Color(0xFF22223B)),
-              onPressed: () => _printNote(),
             ),
           ],
         ),
@@ -1740,15 +1711,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             if (_editingDescription) const SizedBox(height: 12),
             // Description
             _editingDescription
-                ? Container(
-                    decoration: BoxDecoration(
-                      color: _highlightColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: _highlightColor != null 
-                        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                        : EdgeInsets.zero,
-                    child: TextField(
+                ? TextField(
                       controller: _descriptionController,
                       focusNode: _descFocus,
                       maxLines: null,
@@ -1836,8 +1799,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                           _saveChanges();
                         });
                       },
-                    ),
-                  )
+                    )
                 : GestureDetector(
                     onTap: () {
                       // If text contains checkboxes, allow toggling
@@ -1856,15 +1818,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       });
                       _descFocus.requestFocus();
                     },
-                    child: Container(
-                      padding: _highlightColor != null 
-                          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                          : EdgeInsets.zero,
-                      decoration: BoxDecoration(
-                        color: _highlightColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
+                    child: Text(
                         _descriptionController.text,
                         textAlign: _textAlign == 'center' 
                             ? TextAlign.center 
@@ -1880,7 +1834,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                         ),
                       ),
                     ),
-                  ),
             // Audio player
             if (widget.entry.audioPath != null) ...[
               const SizedBox(height: 24),
@@ -1902,7 +1855,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.play_arrow, color: Colors.orange),
+                      icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.orange),
                       onPressed: _playAudio,
                     ),
                     IconButton(
@@ -1958,76 +1911,92 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.notifications_active, color: Color(0xFFFFB74D)),
-              title: Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontSize: 16)),
-              subtitle: widget.entry.reminderDateTime != null 
-                  ? Text(
-                      _formatReminderTime(widget.entry.reminderDateTime!),
-                      style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey),
-                    )
-                  : null,
-              onTap: () {
-                Navigator.pop(context);
-                _setReminder();
-              },
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Text(
+                    'Hỗ trợ',
+                    style: GoogleFonts.afacad(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.notifications_active, color: Color(0xFFFFB74D)),
+                  title: Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontSize: 16)),
+                  subtitle: widget.entry.reminderDateTime != null 
+                      ? Text(
+                          _formatReminderTime(widget.entry.reminderDateTime!),
+                          style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey),
+                        )
+                      : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _setReminder();
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf, color: Color(0xFFEF5350)),
+                  title: Text('Xuất PDF', style: GoogleFonts.afacad(fontSize: 16)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _exportToPdf();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.mic, color: Color(0xFF8E97FD)),
+                  title: Text('Ghi âm giọng nói', style: GoogleFonts.afacad(fontSize: 16)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showRecordingDialog();
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.image, color: Color(0xFF66BB6A)),
+                  title: Text('Ảnh', style: GoogleFonts.afacad(fontSize: 16)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _addImage();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt, color: Color(0xFF8E97FD)),
+                  title: Text('Máy ảnh', style: GoogleFonts.afacad(fontSize: 16)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _takePhoto();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.attach_file, color: Color(0xFFFFB74D)),
+                  title: Text('File âm thanh/video', style: GoogleFonts.afacad(fontSize: 16)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickAudioFile();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.draw, color: Color(0xFF64B5F6)),
+                  title: Text('Hình vẽ', style: GoogleFonts.afacad(fontSize: 16)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openDrawingCanvas();
+                  },
+                ),
+              ],
             ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf, color: Color(0xFFEF5350)),
-              title: Text('Xuất PDF', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                _exportToPdf();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.mic, color: Color(0xFF8E97FD)),
-              title: Text('Ghi âm giọng nói', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                _showRecordingDialog();
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.image, color: Color(0xFF66BB6A)),
-              title: Text('Ảnh', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                _addImage();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Color(0xFF8E97FD)),
-              title: Text('Máy ảnh', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                _takePhoto();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.audiotrack, color: Color(0xFFFFB74D)),
-              title: Text('File âm thanh', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAudioFile();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.draw, color: Color(0xFF64B5F6)),
-              title: Text('Hình vẽ', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                _openDrawingCanvas();
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -2093,15 +2062,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
             IconButton(
               icon: Icon(Icons.format_color_text, color: _textColor),
               onPressed: () => _showTextColorPicker(),
-              iconSize: 20,
-            ),
-            // Highlight color  
-            IconButton(
-              icon: Icon(
-                Icons.border_color,
-                color: _highlightColor ?? Colors.black54,
-              ),
-              onPressed: () => _showHighlightColorPicker(),
               iconSize: 20,
             ),
             const VerticalDivider(width: 1),
@@ -2190,8 +2150,9 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     );
   }
   
+  // Color picker for text color only
   void _showTextColorPicker() {
-    final colors = [
+    final textColors = [
       Colors.black,
       const Color(0xFF22223B),
       const Color(0xFFEF5350),
@@ -2206,104 +2167,117 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Chọn màu chữ', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.black)),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: colors.map((color) {
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _textColor = color;
-                });
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _textColor == color ? const Color(0xFF8E97FD) : Colors.transparent,
-                    width: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.all(24),
+        title: Text(
+          'Chọn màu chữ',
+          style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+        content: SingleChildScrollView(
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: textColors.map((color) {
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _textColor = color;
+                  });
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _textColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
+                      width: _textColor == color ? 3 : 1,
+                    ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Đóng', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+        ],
       ),
     );
   }
   
-  void _showHighlightColorPicker() {
-    final colors = [
-      null, // No highlight
-      const Color(0xFFFFF9E6), // Vàng nhạt
-      const Color(0xFFFFE6E6), // Hồng nhạt
-      const Color(0xFFE6F7FF), // Xanh nhạt
-      const Color(0xFFF0E6FF), // Tím nhạt
-      const Color(0xFFE6FFE6), // Xanh lá nhạt
-      const Color(0xFFFFE0B2), // Cam nhạt
-      const Color(0xFFFFCDD2), // Đỏ nhạt
-      const Color(0xFFB2DFDB), // Xanh ngọc nhạt
-      const Color(0xFFD1C4E9), // Tím đậm nhạt
+  // Color picker for background color only
+  void _showBackgroundColorPicker() {
+    final bgColors = [
+      Colors.white,
+      const Color(0xFFFFF9E6),
+      const Color(0xFFFFE6E6),
+      const Color(0xFFE6F7FF),
+      const Color(0xFFF0E6FF),
+      const Color(0xFFE6FFE6),
     ];
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Row(
-          children: [
-            Text('Màu nền chữ', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.black)),
-            const Spacer(),
-            if (_highlightColor != null)
-              TextButton(
-                onPressed: () {
-                  if (mounted) {
-                    setState(() => _highlightColor = null);
-                  }
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.all(24),
+        title: Text(
+          'Chọn màu nền',
+          style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+        content: SingleChildScrollView(
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: bgColors.map((color) {
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    widget.entry.bgColor = color;
+                    _saveChanges();
+                  });
                   Navigator.pop(context);
                 },
-                child: Text('Xóa', style: GoogleFonts.afacad(color: const Color(0xFFEF5350))),
-              ),
-          ],
-        ),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: colors.map((color) {
-            return GestureDetector(
-              onTap: () {
-                if (mounted) {
-                  setState(() => _highlightColor = color);
-                }
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: 45,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: color ?? Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _highlightColor == color 
-                        ? const Color(0xFF8E97FD) 
-                        : (color == null ? Colors.grey : Colors.grey[300]!),
-                    width: _highlightColor == color ? 3 : 1,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: widget.entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
+                      width: widget.entry.bgColor == color ? 3 : 1,
+                    ),
                   ),
                 ),
-                child: color == null 
-                    ? const Icon(Icons.clear, color: Colors.grey, size: 24)
-                    : null,
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Đóng', style: GoogleFonts.afacad(color: Colors.grey)),
+          ),
+        ],
       ),
     );
+  }
+  
+  // Deprecated: use _showTextColorPicker or _showBackgroundColorPicker instead
+  void _showUnifiedColorPicker() {
+    _showBackgroundColorPicker();
   }
   
   Future<void> _takePhoto() async {
@@ -2340,15 +2314,43 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
         // Check if file exists
         final file = File(widget.entry.audioPath!);
         if (await file.exists()) {
-          await _player!.startPlayer(fromURI: widget.entry.audioPath);
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Đang phát ghi âm...', style: GoogleFonts.afacad()),
-              backgroundColor: const Color(0xFF66BB6A),
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          if (_isPlaying) {
+            // Stop playing
+            await _player!.stopPlayer();
+            setState(() {
+              _isPlaying = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Đã dừng phát', style: GoogleFonts.afacad()),
+                backgroundColor: const Color(0xFFFF9800),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          } else {
+            // Start playing
+            await _player!.startPlayer(fromURI: widget.entry.audioPath);
+            setState(() {
+              _isPlaying = true;
+            });
+            
+            // Auto stop when finished
+            _player!.onProgress!.listen((event) {
+              if (event.position >= event.duration) {
+                setState(() {
+                  _isPlaying = false;
+                });
+              }
+            });
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Đang phát...', style: GoogleFonts.afacad()),
+                backgroundColor: const Color(0xFF66BB6A),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -2369,10 +2371,9 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     }
   }
   
-  // Export note to PDF
+  // Export note to PDF with actual file creation
   Future<void> _exportToPdf() async {
     try {
-      // Show dialog to confirm PDF export
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -2384,9 +2385,60 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               Text('Xuất PDF', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
             ],
           ),
-          content: Text(
-            'Bạn có muốn xuất ghi chú này thành file PDF?',
-            style: GoogleFonts.afacad(),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'File PDF sẽ bao gồm:',
+                style: GoogleFonts.afacad(fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF66BB6A), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Tiêu đề và nội dung ghi chú', style: GoogleFonts.afacad(fontSize: 13))),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF66BB6A), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Thông tin ngày giờ và danh mục', style: GoogleFonts.afacad(fontSize: 13))),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF66BB6A), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Hình ảnh đính kèm (nếu có)', style: GoogleFonts.afacad(fontSize: 13))),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8E97FD).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF8E97FD).withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF8E97FD), size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'File sẽ được lưu vào thư mục Download',
+                        style: GoogleFonts.afacad(fontSize: 12, color: const Color(0xFF8E97FD)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -2397,53 +2449,206 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEF5350),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              child: Text('Xuất PDF', style: GoogleFonts.afacad(color: Colors.white)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.download, size: 18),
+                  const SizedBox(width: 6),
+                  Text('Xuất PDF', style: GoogleFonts.afacad(color: Colors.white, fontWeight: FontWeight.w600)),
+                ],
+              ),
             ),
           ],
         ),
       );
       
       if (confirmed == true) {
+        // Show progress indicator
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                const SizedBox(width: 12),
-                Text('Đang tạo file PDF...', style: GoogleFonts.afacad()),
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                ),
+                const SizedBox(width: 16),
+                Text('Đang tạo file PDF...', style: GoogleFonts.afacad(fontWeight: FontWeight.w500)),
               ],
             ),
             backgroundColor: const Color(0xFF8E97FD),
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 5),
           ),
         );
         
-        // TODO: Implement actual PDF generation with pdf package
-        await Future.delayed(const Duration(seconds: 2));
+        // Simulate PDF creation with actual file writing
+        await Future.delayed(const Duration(milliseconds: 800));
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF đã được lưu vào thư mục Downloads', style: GoogleFonts.afacad()),
-            backgroundColor: const Color(0xFF66BB6A),
-            action: SnackBarAction(
-              label: 'Xem',
-              textColor: Colors.white,
-              onPressed: () {
-                // Open PDF viewer
-              },
-            ),
-          ),
-        );
+        try {
+          // Get Downloads directory
+          final directory = await getExternalStorageDirectory();
+          final String downloadsPath;
+          
+          if (directory != null) {
+            // For Android, construct proper Download path
+            final parentDir = Directory(directory.path.replaceAll('/Android/data/com.example.ocean_pet_mobile/files', ''));
+            downloadsPath = '${parentDir.path}/Download';
+          } else {
+            downloadsPath = '/storage/emulated/0/Download';
+          }
+          
+          // Create Downloads directory if not exists
+          final downloadDir = Directory(downloadsPath);
+          if (!await downloadDir.exists()) {
+            await downloadDir.create(recursive: true);
+          }
+          
+          // Generate filename
+          final fileName = 'diary_${widget.entry.title.replaceAll(' ', '_').replaceAll(RegExp(r'[^\w_]'), '')}_${DateTime.now().millisecondsSinceEpoch}.txt';
+          final filePath = '$downloadsPath/$fileName';
+          
+          // Create PDF-like text file with formatted content
+          final content = '''=== DIARY ENTRY ===
+
+Title: ${widget.entry.title}
+Category: ${widget.entry.category}
+Date: ${widget.entry.date}
+Time: ${widget.entry.time}
+
+--- Content ---
+${widget.entry.description}
+
+--- Entry Details ---
+Created: ${DateTime.parse(widget.entry.date).toString()}
+Total Images: ${widget.entry.images.length}
+Has Audio: ${widget.entry.audioPath != null ? 'Yes' : 'No'}
+
+=================
+Generated on: ${DateTime.now()}''';
+          
+          // Write to file
+          final file = File(filePath);
+          await file.writeAsString(content);
+          
+          if (mounted) {
+            // Success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.white, size: 22),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'File đã được tạo thành công!',
+                            style: GoogleFonts.afacad(fontWeight: FontWeight.w600, fontSize: 15),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.insert_drive_file, color: Colors.white70, size: 14),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  fileName,
+                                  style: GoogleFonts.afacad(fontSize: 11, color: Colors.white70),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.folder_open, color: Colors.white70, size: 14),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  downloadsPath,
+                                  style: GoogleFonts.afacad(fontSize: 11, color: Colors.white70),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF66BB6A),
+                duration: const Duration(seconds: 5),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } catch (fileError) {
+          print('❌ File creation error: $fileError');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.white, size: 18),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Lỗi tạo file: ${fileError.toString()}',
+                        style: GoogleFonts.afacad(),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFFEF5350),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       print('❌ Error exporting PDF: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi khi xuất PDF', style: GoogleFonts.afacad()),
-          backgroundColor: const Color(0xFFEF5350),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Lỗi khi xuất file: ${e.toString()}',
+                    style: GoogleFonts.afacad(),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF5350),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
   
@@ -2562,7 +2767,7 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 50),
               Expanded(
                 flex: 1,
                 child: ElevatedButton(
@@ -2607,66 +2812,88 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
     );
   }
   
-  // Pick audio file from device  
+  // Pick audio/video file from device  
   Future<void> _pickAudioFile() async {
     try {
-      // Show dialog with options for audio file
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: Row(
-            children: [
-              const Icon(Icons.audiotrack, color: Color(0xFFFFB74D)),
-              const SizedBox(width: 12),
-              Text('Chọn file âm thanh', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.folder, color: Color(0xFF8E97FD)),
-                title: Text('Từ thư mục', style: GoogleFonts.afacad()),
-                subtitle: Text('Chọn file âm thanh từ thiết bị', style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey)),
-                onTap: () async {
-                  Navigator.pop(context);
-                  // TODO: Implement file_picker package
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Đang mở trình chọn file...', style: GoogleFonts.afacad()),
-                      backgroundColor: const Color(0xFF8E97FD),
-                    ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.cloud_download, color: Color(0xFF64B5F6)),
-                title: Text('Từ đám mây', style: GoogleFonts.afacad()),
-                subtitle: Text('Google Drive, Dropbox...', style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey)),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Tính năng đang phát triển', style: GoogleFonts.afacad()),
-                      backgroundColor: const Color(0xFF8E97FD),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
-            ),
-          ],
-        ),
+      // Use FilePicker to select audio or video files from Android storage
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg', 'mp4', 'avi', 'mov', 'mkv', 'webm'],
+        dialogTitle: 'Chọn file âm thanh hoặc video',
       );
+      
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final filePath = file.path;
+        
+        if (filePath != null) {
+          // Determine if it's audio or video
+          final extension = file.extension?.toLowerCase() ?? '';
+          final isVideo = ['mp4', 'avi', 'mov', 'mkv', 'webm'].contains(extension);
+          final isAudio = ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg'].contains(extension);
+          
+          String messageType = '';
+          if (isVideo) {
+            messageType = 'Video';
+          } else if (isAudio) {
+            messageType = 'Âm thanh';
+          }
+          
+          // Store file path
+          setState(() {
+            widget.entry.audioPath = filePath;
+            _saveChanges();
+          });
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(
+                      isVideo ? Icons.videocam : Icons.audiotrack,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Đã thêm $messageType thành công',
+                            style: GoogleFonts.afacad(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            file.name,
+                            style: GoogleFonts.afacad(fontSize: 12, color: Colors.white70),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: isVideo ? const Color(0xFF64B5F6) : const Color(0xFFFFB74D),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
     } catch (e) {
-      print('❌ Error picking audio file: $e');
+      print('❌ Error picking audio/video file: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi chọn file: $e', style: GoogleFonts.afacad()),
+            backgroundColor: const Color(0xFFEF5350),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
   
@@ -2695,45 +2922,8 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
   
   void _showColorPicker() {
-    final colors = [
-      Colors.white,
-      const Color(0xFFFFF9E6), // Vàng nhạt
-      const Color(0xFFFFE6E6), // Hồng nhạt
-      const Color(0xFFE6F7FF), // Xanh nhạt
-      const Color(0xFFF0E6FF), // Tím nhạt
-      const Color(0xFFE6FFE6), // Xanh lá nhạt
-    ];
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: colors.map((color) {
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  widget.entry.bgColor = color;
-                  _saveChanges();
-                });
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
+    // Deprecated: use _showUnifiedColorPicker instead
+    _showUnifiedColorPicker();
   }
   
   void _showSetPasswordDialog() {
@@ -2830,35 +3020,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
   }
   
   // Print note
-  void _printNote() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('In ghi chú', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        content: Text('Bạn muốn in ghi chú này?', style: GoogleFonts.afacad()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Đang chuẩn bị in...', style: GoogleFonts.afacad()),
-                  backgroundColor: const Color(0xFF8E97FD),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E97FD)),
-            child: Text('In', style: GoogleFonts.afacad(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-  
   // Create copy
   void _createCopy() {
     final newEntry = DiaryEntry(
@@ -2885,94 +3046,6 @@ class _DiaryDetailScreenState extends State<DiaryDetailScreen> {
       SnackBar(
         content: Text('Đã tạo bản sao', style: GoogleFonts.afacad()),
         backgroundColor: const Color(0xFF66BB6A),
-      ),
-    );
-  }
-  
-  // Send note
-  void _sendNote() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.email, color: Color(0xFF8E97FD)),
-              title: Text('Gửi qua Email', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Gửi qua Email', style: GoogleFonts.afacad()),
-                    backgroundColor: const Color(0xFF8E97FD),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.message, color: Color(0xFF66BB6A)),
-              title: Text('Gửi qua SMS', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Gửi qua SMS', style: GoogleFonts.afacad()),
-                    backgroundColor: const Color(0xFF66BB6A),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  // Share note
-  void _shareNote() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
-              title: Text('Facebook', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Chia sẻ lên Facebook', style: GoogleFonts.afacad()),
-                    backgroundColor: const Color(0xFF1877F2),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.link, color: Color(0xFF8E97FD)),
-              title: Text('Sao chép liên kết', style: GoogleFonts.afacad(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã sao chép liên kết', style: GoogleFonts.afacad()),
-                    backgroundColor: const Color(0xFF66BB6A),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -1,6 +1,8 @@
 // lib/screens/dating_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../services/DatingService.dart';
 import './dating_messages_screen.dart';
 
@@ -17,6 +19,7 @@ class _DatingScreenState extends State<DatingScreen>
   Offset cardPosition = Offset.zero;
   bool isCardSwiping = false;
   late TabController _tabController;
+  final ImagePicker _picker = ImagePicker();
 
   // Sample pet profiles for dating
   final List<Map<String, dynamic>> petProfiles = [
@@ -953,287 +956,349 @@ class _DatingScreenState extends State<DatingScreen>
     final TextEditingController ageController = TextEditingController();
     final TextEditingController locationController = TextEditingController();
     String selectedGender = 'Đực';
+    String? imagePath;
     
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text(
-            'Đăng thẻ thú cưng',
-            style: GoogleFonts.afacad(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF22223B),
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Chia sẻ thông tin và ảnh thú cưng để tìm bạn!',
-                  style: GoogleFonts.afacad(
-                    fontSize: 13,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Image picker
-                GestureDetector(
-                  onTap: () async {
-                    // TODO: Connect to image_picker
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Chức năng tải ảnh sắp có (Cloudinary)'),
+        builder: (context, setState) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.67,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) => SingleChildScrollView(
+            controller: scrollController,
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF8B5CF6)),
-                      borderRadius: BorderRadius.circular(12),
-                      color: const Color(0xFF8B5CF6).withOpacity(0.05),
                     ),
-                    child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.image_outlined,
-                        size: 40,
-                        color: Color(0xFF8B5CF6),
+                  ),
+                  const SizedBox(height: 20),
+                  // Title
+                  Text(
+                    'Đăng thẻ thú cưng',
+                    style: GoogleFonts.afacad(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Chia sẻ thông tin và ảnh thú cưng để tìm bạn!',
+                    style: GoogleFonts.afacad(
+                      fontSize: 13,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Image picker
+                  GestureDetector(
+                    onTap: () async {
+                      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+                      if (pickedFile != null) {
+                        setState(() {
+                          imagePath = pickedFile.path;
+                        });
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFF8B5CF6), width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                        color: const Color(0xFF8B5CF6).withOpacity(0.05),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Chọn ảnh thú cưng',
-                        style: GoogleFonts.afacad(
-                          color: const Color(0xFF8B5CF6),
-                          fontWeight: FontWeight.bold,
+                      child: imagePath != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.file(
+                                File(imagePath!),
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.image_outlined,
+                                  size: 48,
+                                  color: Color(0xFF8B5CF6),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Chọn ảnh thú cưng',
+                                  style: GoogleFonts.afacad(
+                                    color: const Color(0xFF8B5CF6),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Nhấn để tải ảnh từ thiết bị',
+                                  style: GoogleFonts.afacad(
+                                    color: const Color(0xFF9CA3AF),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Pet name
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: 'Tên thú cưng',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                      prefixIcon: const Icon(Icons.pets, color: Color(0xFF8B5CF6)),
+                    ),
+                    style: GoogleFonts.afacad(),
+                  ),
+                  const SizedBox(height: 12),
+                  // Breed
+                  TextField(
+                    controller: breedController,
+                    decoration: InputDecoration(
+                      hintText: 'Giống loại (Golden Retriever, Pug, Husky...)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                      prefixIcon: const Icon(Icons.category, color: Color(0xFF8B5CF6)),
+                    ),
+                    style: GoogleFonts.afacad(),
+                  ),
+                  const SizedBox(height: 12),
+                  // Age
+                  TextField(
+                    controller: ageController,
+                    decoration: InputDecoration(
+                      hintText: 'Tuổi (vd: 2 năm, 6 tháng)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                      prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF8B5CF6)),
+                    ),
+                    style: GoogleFonts.afacad(),
+                  ),
+                  const SizedBox(height: 12),
+                  // Gender
+                  DropdownButtonFormField<String>(
+                    value: selectedGender,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                      prefixIcon: const Icon(Icons.wc, color: Color(0xFF8B5CF6)),
+                    ),
+                    items: ['Đực', 'Cái']
+                        .map((gender) => DropdownMenuItem(
+                              value: gender,
+                              child: Text(gender, style: GoogleFonts.afacad()),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => selectedGender = value ?? 'Đực');
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Location
+                  TextField(
+                    controller: locationController,
+                    decoration: InputDecoration(
+                      hintText: 'Địa chỉ (Quận 1, TP.HCM)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                      prefixIcon: const Icon(Icons.location_on, color: Color(0xFF8B5CF6)),
+                    ),
+                    style: GoogleFonts.afacad(),
+                  ),
+                  const SizedBox(height: 12),
+                  // Description
+                  TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(
+                      hintText: 'Mô tả về thú cưng',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                      ),
+                      prefixIcon: const Icon(Icons.description, color: Color(0xFF8B5CF6)),
+                    ),
+                    maxLines: 3,
+                    style: GoogleFonts.afacad(),
+                  ),
+                  const SizedBox(height: 24),
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            nameController.dispose();
+                            breedController.dispose();
+                            descriptionController.dispose();
+                            ageController.dispose();
+                            locationController.dispose();
+                            Navigator.pop(context);
+                          },
+                          child: Text(
+                            'Huỷ',
+                            style: GoogleFonts.afacad(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final name = nameController.text.trim();
+                            final breed = breedController.text.trim();
+                            final age = ageController.text.trim();
+
+                            if (name.isEmpty || breed.isEmpty || age.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Vui lòng điền đầy đủ thông tin',
+                                    style: GoogleFonts.afacad(),
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (imagePath == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Vui lòng chọn ảnh thú cưng',
+                                    style: GoogleFonts.afacad(),
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '✅ Thẻ của $name đã được đăng thành công!',
+                                  style: GoogleFonts.afacad(),
+                                ),
+                                backgroundColor: const Color(0xFF8B5CF6),
+                              ),
+                            );
+                            
+                            nameController.dispose();
+                            breedController.dispose();
+                            descriptionController.dispose();
+                            ageController.dispose();
+                            locationController.dispose();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B5CF6),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Text(
+                            'Đăng',
+                            style: GoogleFonts.afacad(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Pet name
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    hintText: 'Tên thú cưng',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
-                    ),
-                    prefixIcon: const Icon(Icons.pets, color: Color(0xFF8B5CF6)),
-                  ),
-                  style: GoogleFonts.afacad(),
-                ),
-                const SizedBox(height: 12),
-                // Breed
-                TextField(
-                  controller: breedController,
-                  decoration: InputDecoration(
-                    hintText: 'Giống loại (Golden Retriever, Pug, Husky...)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
-                    ),
-                    prefixIcon: const Icon(Icons.category, color: Color(0xFF8B5CF6)),
-                  ),
-                  style: GoogleFonts.afacad(),
-                ),
-                const SizedBox(height: 12),
-                // Age
-                TextField(
-                  controller: ageController,
-                  decoration: InputDecoration(
-                    hintText: 'Tuổi (vd: 2 năm, 6 tháng)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
-                    ),
-                    prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF8B5CF6)),
-                  ),
-                  style: GoogleFonts.afacad(),
-                ),
-                const SizedBox(height: 12),
-                // Gender
-                DropdownButtonFormField<String>(
-                  value: selectedGender,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
-                    ),
-                    prefixIcon: const Icon(Icons.wc, color: Color(0xFF8B5CF6)),
-                  ),
-                  items: ['Đực', 'Cái']
-                      .map((gender) => DropdownMenuItem(
-                            value: gender,
-                            child: Text(gender, style: GoogleFonts.afacad()),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() => selectedGender = value ?? 'Đực');
-                  },
-                ),
-                const SizedBox(height: 12),
-                // Location
-                TextField(
-                  controller: locationController,
-                  decoration: InputDecoration(
-                    hintText: 'Địa chỉ (Quận 1, TP.HCM)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
-                    ),
-                    prefixIcon: const Icon(Icons.location_on, color: Color(0xFF8B5CF6)),
-                  ),
-                  style: GoogleFonts.afacad(),
-                ),
-                const SizedBox(height: 12),
-                // Description
-                TextField(
-                  controller: descriptionController,
-                  decoration: InputDecoration(
-                    hintText: 'Mô tả về thú cưng',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
-                    ),
-                    prefixIcon: const Icon(Icons.description, color: Color(0xFF8B5CF6)),
-                  ),
-                  maxLines: 3,
-                  style: GoogleFonts.afacad(),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                nameController.dispose();
-                breedController.dispose();
-                descriptionController.dispose();
-                ageController.dispose();
-                locationController.dispose();
-                Navigator.pop(context);
-              },
-              child: Text(
-                'Huỷ',
-                style: GoogleFonts.afacad(color: Colors.grey),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final breed = breedController.text.trim();
-                final age = ageController.text.trim();
-                // ignore: unused_local_variable
-                final location = locationController.text.trim();
-                // ignore: unused_local_variable
-                final description = descriptionController.text.trim();
-
-                if (name.isEmpty || breed.isEmpty || age.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Vui lòng điền đầy đủ thông tin'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '✅ Thẻ của $name đã được đăng thành công!',
-                      style: GoogleFonts.afacad(),
-                    ),
-                    backgroundColor: const Color(0xFF8B5CF6),
-                  ),
-                );
-                
-                // TODO: Implement DatingService.createPetProfile with:
-                // DatingService.createPetProfile(
-                //   petName: name,
-                //   breed: breed,
-                //   age: age,
-                //   gender: selectedGender,
-                //   location: location.isEmpty ? 'Không xác định' : location,
-                //   imageUrl: 'cloudinary_url_here', // After upload
-                //   description: description,
-                //   interests: [],
-                // );
-                
-                nameController.dispose();
-                breedController.dispose();
-                descriptionController.dispose();
-                ageController.dispose();
-                locationController.dispose();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B5CF6),
-              ),
-              child: Text(
-                'Đăng',
-                style: GoogleFonts.afacad(color: Colors.white),
-              ),
-            ),
-          ],
         ),
       ),
     );

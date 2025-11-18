@@ -33,6 +33,20 @@ class _NutritionScreenState extends State<NutritionScreen> {
   static const String _geminiApiKey = 'AIzaSyAOkwaRgulW9Vu-8rHADj6Ugeb6qcf1BQ8';
   static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
+  // Hàm loại bỏ markdown
+  String cleanMarkdown(String text) {
+    return text
+        .replaceAll(RegExp(r'\*\*(.*?)\*\*'), r'$1')  // **bold**
+        .replaceAll(RegExp(r'__(.*?)__'), r'$1')      // __bold__
+        .replaceAll(RegExp(r'\*(.*?)\*'), r'$1')      // *italic*
+        .replaceAll(RegExp(r'_(.*?)_'), r'$1')        // _italic_
+        .replaceAll(RegExp(r'`(.*?)`'), r'$1')        // `code`
+        .replaceAll(RegExp(r'#{1,6}\s'), '')         // # headers
+        .replaceAll(RegExp(r'!\[.*?\]\((.*?)\)'), '(ảnh)') // images
+        .replaceAll(RegExp(r'\[.*?\]\((.*?)\)'), r'$1')    // links
+        .trim();
+  }
+
   final Map<String, Map<String, Map<String, dynamic>>> _healthStandards = {
     'Chó': {
       'Con': {'minWeight': 2.0, 'maxWeight': 10.0, 'minHeight': 15.0, 'maxHeight': 30.0},
@@ -197,6 +211,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
       final prompt = '''
 Bạn là bác sĩ thú y chuyên môn cao. Hãy phân tích tình trạng sức khỏe và đưa ra lời khuyên dinh dưỡng chi tiết cho thú cưng.
 
+QUAN TRỌNG: Tuyệt đối không dùng định dạng markdown như **, __, *, _, `, [], (), ###, > trong câu trả lời. Chỉ trả lời bằng văn bản thuần túy.
+
 Thông tin thú cưng:
 - Loài: $petType
 - Độ tuổi: $age
@@ -259,7 +275,7 @@ Hãy trả lời chi tiết, dễ hiểu, bằng tiếng Việt, với format d�
 
         if (mounted) {
           setState(() {
-            _recommendation = recommendation;
+            _recommendation = cleanMarkdown(recommendation);
             _isLoadingAI = false;
           });
         }

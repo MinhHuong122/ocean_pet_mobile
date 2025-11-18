@@ -60,6 +60,9 @@ dependencies:
   # Image picker
   image_picker: ^1.0.7
   
+  # File picker for audio/video
+  file_picker: ^8.1.0
+  
   # Audio recorder
   flutter_sound: ^9.2.13
   path_provider: ^2.1.2
@@ -75,6 +78,12 @@ dependencies:
   # Facebook Auth (keep stable version)
   flutter_facebook_auth: ^7.1.1
   permission_handler: ^11.3.1
+  
+  # YouTube Player for training videos
+  youtube_player_flutter: ^9.0.2
+  
+  # QR Code
+  qr_flutter: ^4.1.0
 
   # Cloudinary for image upload
   cloudinary_public: ^0.21.0
@@ -96,9 +105,6 @@ dependencies:
   google_maps_flutter: ^2.5.0
   geolocator: ^10.1.0
   geocoding: ^2.1.1
-  
-  # QR Code
-  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

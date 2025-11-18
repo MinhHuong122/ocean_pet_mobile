@@ -53,9 +53,17 @@ class QuickLoginService {
     required bool enableBiometric,
   }) async {
     try {
+      print('💾 [QuickLogin] Saving credentials...');
+      print('💾 [QuickLogin] Email: $email');
+      print('💾 [QuickLogin] Password length: ${password.length}');
+      print('💾 [QuickLogin] Enable biometric: $enableBiometric');
+      
       // Lưu email và password vào Secure Storage (email sẽ được giữ lại sau logout)
       await _storage.write(key: _emailKey, value: email);
+      print('💾 [QuickLogin] Email written to secure storage');
+      
       await _storage.write(key: _passwordKey, value: password);
+      print('💾 [QuickLogin] Password written to secure storage');
       
       // Lưu trạng thái biometric
       final prefs = await SharedPreferences.getInstance();
@@ -63,6 +71,11 @@ class QuickLoginService {
       await prefs.setBool(_hasLoggedInBeforeKey, true);
       
       print('✅ [QuickLogin] Credentials saved successfully (email: $email)');
+      
+      // Verify by reading back
+      final verifyEmail = await _storage.read(key: _emailKey);
+      final verifyPassword = await _storage.read(key: _passwordKey);
+      print('🔍 [QuickLogin] Verification - Email: ${verifyEmail != null ? "✅" : "❌"}, Password: ${verifyPassword != null ? "✅" : "❌"}');
     } catch (e) {
       print('❌ [QuickLogin] Error saving credentials: $e');
       rethrow;
@@ -104,11 +117,31 @@ class QuickLoginService {
   /// Xác thực biometric (Face ID hoặc Fingerprint)
   static Future<bool> authenticateWithBiometric() async {
     try {
+      // Check if biometric is available first
+      final canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      final isDeviceSupported = await _localAuth.isDeviceSupported();
+      
+      if (!canCheckBiometrics || !isDeviceSupported) {
+        print('⚠️ [Biometric] Device does not support biometric authentication');
+        return false;
+      }
+      
+      // Get available biometrics
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      if (availableBiometrics.isEmpty) {
+        print('⚠️ [Biometric] No biometric methods enrolled on device');
+        return false;
+      }
+      
+      print('🔐 [Biometric] Available methods: $availableBiometrics');
+      
       final bool isAuthenticated = await _localAuth.authenticate(
-        localizedReason: 'Vui lòng xác thực danh tính của bạn',
+        localizedReason: 'Xác thực để đăng nhập vào Ocean Pet',
         options: const AuthenticationOptions(
           stickyAuth: true, // Tiếp tục xác thực nếu app bị tạm dừng
-          biometricOnly: true, // Chỉ dùng biometric, không dùng PIN/Pattern
+          biometricOnly: false, // Cho phép dùng PIN/Pattern nếu biometric fail
+          useErrorDialogs: true, // Hiển thị dialog lỗi tự động
+          sensitiveTransaction: false,
         ),
       );
       
@@ -124,15 +157,22 @@ class QuickLoginService {
   /// Cần được gọi sau khi xác thực biometric thành công
   static Future<Map<String, String>?> getCredentials() async {
     try {
+      print('🔍 [QuickLogin] Reading from secure storage...');
       final email = await _storage.read(key: _emailKey);
       final password = await _storage.read(key: _passwordKey);
       
+      print('🔍 [QuickLogin] Email read: ${email != null ? "✅ $email" : "❌ null"}');
+      print('🔍 [QuickLogin] Password read: ${password != null ? "✅ ${password.length} chars" : "❌ null"}');
+      
       if (email != null && password != null) {
+        print('✅ [QuickLogin] Both credentials found');
         return {
           'email': email,
           'password': password,
         };
       }
+      
+      print('❌ [QuickLogin] Missing credentials - email: ${email != null}, password: ${password != null}');
       return null;
     } catch (e) {
       print('❌ [QuickLogin] Error retrieving credentials: $e');
@@ -141,11 +181,11 @@ class QuickLoginService {
   }
 
   /// Xóa thông tin đăng nhập (logout)
-  /// KHÔNG xoá email - email phải được giữ lại cho QuickLoginScreen
+  /// GIỮ LẠI email và password cho quick login - CHỈ tắt biometric
   static Future<void> clearCredentials() async {
     try {
-      // CHỈ xoá password, giữ lại email
-      await _storage.delete(key: _passwordKey);
+      // KHÔNG xoá password - giữ lại để biometric có thể dùng
+      // CHỈ tắt biometric flag
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isBiometricEnabledKey, false);
@@ -153,7 +193,7 @@ class QuickLoginService {
       // We want to preserve the "user has logged in before" flag
       // so they see QuickLoginScreen after logout, not LoginScreen
       
-      print('✅ [QuickLogin] Credentials cleared (email preserved for QuickLoginScreen)');
+      print('✅ [QuickLogin] Biometric disabled (email and password preserved for quick login)');
     } catch (e) {
       print('❌ [QuickLogin] Error clearing credentials: $e');
       rethrow;

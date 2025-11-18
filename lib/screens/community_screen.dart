@@ -559,7 +559,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         builder: (context, setSheetState) {
           final mq = MediaQuery.of(context);
           return SizedBox(
-            height: mq.size.height * 0.5,
+            height: mq.size.height * 0.67,
             width: double.infinity,
             child: Padding(
               padding: EdgeInsets.only(
@@ -587,7 +587,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   // Header
                   Row(
                     children: [
-                      const CircleAvatar(radius: 20, backgroundColor: Color(0xFF8B5CF6), child: Icon(Icons.person, color: Colors.white)),
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: const Color(0xFF8B5CF6),
+                        child: currentUserId != null
+                            ? Text(
+                                currentUserId?.substring(0, 1).toUpperCase() ?? 'U',
+                                style: GoogleFonts.afacad(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                              )
+                            : const Icon(Icons.person, color: Colors.white),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -899,16 +908,30 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: const Color(0xFF8B5CF6),
-                  child: const Icon(Icons.person, color: Colors.white),
+                  child: currentUserId != null
+                      ? Text(
+                          currentUserId?.substring(0, 1).toUpperCase() ?? 'U',
+                          style: GoogleFonts.afacad(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        )
+                      : const Icon(Icons.person, color: Colors.white),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Bạn đang nghĩ gì?',
-                    style: GoogleFonts.afacad(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bạn',
+                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      Text(
+                        'Bạn đang nghĩ gì?',
+                        style: GoogleFonts.afacad(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const Icon(Icons.edit, color: Color(0xFF8B5CF6)),

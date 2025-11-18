@@ -33,12 +33,8 @@ class _EventsScreenState extends State<EventsScreen> {
   
   final List<String> locations = [
     'Tất cả',
-    'Quận 1',
-    'Quận 3',
-    'Quận 5',
-    'Quận 7',
-    'TP HCM',
     'Online',
+    'Offline',
   ];
 
   final List<Map<String, dynamic>> localEvents = [
@@ -295,7 +291,7 @@ class _EventsScreenState extends State<EventsScreen> {
         elevation: 0,
         toolbarHeight: 70,
         title: Text(
-          'Sự kiện',
+          'Hẹn hò',
           style: GoogleFonts.afacad(
             fontSize: 26,
             fontWeight: FontWeight.bold,
