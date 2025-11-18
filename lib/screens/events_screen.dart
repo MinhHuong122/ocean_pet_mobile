@@ -291,7 +291,7 @@ class _EventsScreenState extends State<EventsScreen> {
         elevation: 0,
         toolbarHeight: 70,
         title: Text(
-          'Hẹn hò',
+          'Sự kiện',
           style: GoogleFonts.afacad(
             fontSize: 26,
             fontWeight: FontWeight.bold,

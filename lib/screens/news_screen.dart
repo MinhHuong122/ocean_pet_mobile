@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/news_service.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -10,61 +12,36 @@ class NewsScreen extends StatefulWidget {
 
 class _NewsScreenState extends State<NewsScreen> {
   int selectedCategory = 0;
+  List<Map<String, dynamic>> allNews = [];
+  bool isLoading = true;
+  String errorMessage = '';
 
   final List<String> categories = [
     'Tất cả',
-    'Sức khỏe',
-    'Giải trí',
-    'Khám phá',
   ];
 
-  final List<Map<String, dynamic>> allNews = [
-    {
-      'title': '5 Dấu hiệu cho biết chó của bạn khỏe mạnh',
-      'category': 'Sức khỏe',
-      'image': 'lib/res/drawables/setting/tag-SK.png',
-      'author': 'Dr. Nguyễn Văn An',
-      'date': '15 Nov 2024',
-      'readTime': '5 phút',
-      'content': 'Một chú chó khỏe mạnh cần có những dấu hiệu nhất định...'
-    },
-    {
-      'title': 'Cách tạo khu vui chơi an toàn cho thú cưng',
-      'category': 'Giải trí',
-      'image': 'lib/res/drawables/setting/tag-VN.png',
-      'author': 'Pet Expert Team',
-      'date': '14 Nov 2024',
-      'readTime': '7 phút',
-      'content': 'Thú cưng cần một không gian để chơi đùa và vận động...'
-    },
-    {
-      'title': 'Những loài vật hoang dã kỳ lạ trên thế giới',
-      'category': 'Khám phá',
-      'image': 'lib/res/drawables/setting/tag-HL.jpg',
-      'author': 'Wildlife Magazine',
-      'date': '13 Nov 2024',
-      'readTime': '8 phút',
-      'content': 'Khám phá những loài động vật hiếm gặp và độc đáo...'
-    },
-    {
-      'title': 'Cách huấn luyện chó con từ những tháng đầu',
-      'category': 'Sức khỏe',
-      'image': 'lib/res/drawables/setting/tag-SK.png',
-      'author': 'Training Expert',
-      'date': '12 Nov 2024',
-      'readTime': '6 phút',
-      'content': 'Huấn luyện chó con cần sự kiên nhẫn và phương pháp đúng...'
-    },
-    {
-      'title': 'Những trò chơi vui nhộn cho mèo nhà',
-      'category': 'Giải trí',
-      'image': 'lib/res/drawables/setting/tag-VN.png',
-      'author': 'Cat Lover',
-      'date': '11 Nov 2024',
-      'readTime': '4 phút',
-      'content': 'Mèo là loài vật thích chơi, đặc biệt là vào ban đêm...'
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadNews();
+  }
+
+  Future<void> _loadNews() async {
+    setState(() => isLoading = true);
+    try {
+      final news = await NewsService.getPetNews();
+      setState(() {
+        allNews = news;
+        isLoading = false;
+        errorMessage = '';
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Không thể tải tin tức: $e';
+        isLoading = false;
+      });
+    }
+  }
 
   List<Map<String, dynamic>> get filteredNews {
     if (selectedCategory == 0) {
@@ -75,95 +52,147 @@ class _NewsScreenState extends State<NewsScreen> {
         .toList();
   }
 
+  void _openUrl(String url) async {
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không có link bài viết', style: GoogleFonts.afacad()),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    final Uri uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể mở link: $e', style: GoogleFonts.afacad()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Tin tức',
-          style: GoogleFonts.afacad(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+        elevation: 1,
+        toolbarHeight: 70,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            'Tin tức',
+            style: GoogleFonts.afacad(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
         ),
         centerTitle: false,
         actions: [
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Icon(Icons.search, color: Colors.black),
+            child: GestureDetector(
+              onTap: () {
+                _loadNews();
+              },
+              child: Icon(Icons.refresh, color: Colors.black),
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Category filter
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: SizedBox(
-                  height: 50,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      bool isSelected = selectedCategory == index;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 12.0),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedCategory = index;
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Color(0xFF8B5CF6)
-                                  : Colors.grey[200],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Center(
-                              child: Text(
-                                categories[index],
-                                style: GoogleFonts.afacad(
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.black,
-                                  fontSize: 13,
-                                ),
-                              ),
+      body: RefreshIndicator(
+        onRefresh: _loadNews,
+        color: const Color(0xFF8B5CF6),
+        child: SafeArea(
+          child: isLoading
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        color: Color(0xFF8B5CF6),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Đang tải tin tức...',
+                        style: GoogleFonts.afacad(),
+                      ),
+                    ],
+                  ),
+                )
+              : errorMessage.isNotEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              errorMessage,
+                              style: GoogleFonts.afacad(color: Colors.red),
+                              textAlign: TextAlign.center,
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadNews,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8B5CF6),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text('Thử lại', style: GoogleFonts.afacad()),
+                          ),
+                        ],
+                      ),
+                    )
+                  : filteredNews.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.newspaper, size: 48, color: Colors.grey),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Không có bài viết',
+                                style: GoogleFonts.afacad(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                child: Column(
+                                  children: [
+                                    ...filteredNews
+                                        .map((news) => _newsCard(context, news))
+                                        .toList(),
+                                    SizedBox(height: 40),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-
-              // News list
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  children: [
-                    ...filteredNews
-                        .map((news) => _newsCard(context, news))
-                        .toList(),
-                    SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -192,11 +221,28 @@ class _NewsScreenState extends State<NewsScreen> {
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
                 ),
-                image: DecorationImage(
-                  image: AssetImage(news['image']),
-                  fit: BoxFit.cover,
-                ),
               ),
+              child: news['image'].toString().startsWith('http')
+                  ? Image.network(
+                      news['image'],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[300],
+                          child: Icon(Icons.image_not_supported),
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      news['image'],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[300],
+                          child: Icon(Icons.image_not_supported),
+                        );
+                      },
+                    ),
             ),
 
             // Content
@@ -213,7 +259,7 @@ class _NewsScreenState extends State<NewsScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      news['category'],
+                      news['category'] ?? 'Tất cả',
                       style: GoogleFonts.afacad(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -225,7 +271,7 @@ class _NewsScreenState extends State<NewsScreen> {
 
                   // Title
                   Text(
-                    news['title'],
+                    news['title'] ?? 'Không có tiêu đề',
                     style: GoogleFonts.afacad(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -245,7 +291,7 @@ class _NewsScreenState extends State<NewsScreen> {
                             radius: 12,
                             backgroundColor: Color(0xFF8B5CF6),
                             child: Text(
-                              news['author'][0],
+                              (news['author'] ?? 'N')[0].toUpperCase(),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -257,14 +303,16 @@ class _NewsScreenState extends State<NewsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                news['author'],
+                                news['author'] ?? 'NewsData',
                                 style: GoogleFonts.afacad(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                news['date'],
+                                news['date'] ?? 'Gần đây',
                                 style: GoogleFonts.afacad(
                                   fontSize: 10,
                                   color: Colors.grey,
@@ -275,7 +323,7 @@ class _NewsScreenState extends State<NewsScreen> {
                         ],
                       ),
                       Text(
-                        news['readTime'],
+                        news['readTime'] ?? '1 phút',
                         style: GoogleFonts.afacad(
                           fontSize: 11,
                           color: Colors.grey,
@@ -296,10 +344,14 @@ class _NewsScreenState extends State<NewsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
         expand: false,
         builder: (context, scrollController) => SingleChildScrollView(
           controller: scrollController,
@@ -308,55 +360,143 @@ class _NewsScreenState extends State<NewsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Close indicator
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Title
                 Text(
-                  news['title'],
+                  news['title'] ?? 'Không có tiêu đề',
                   style: GoogleFonts.afacad(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    height: 1.4,
                   ),
                 ),
                 SizedBox(height: 12),
+                
+                // Meta info
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${news['author']} • ${news['date']}',
-                      style: GoogleFonts.afacad(
-                        fontSize: 12,
-                        color: Colors.grey,
+                    Expanded(
+                      child: Text(
+                        '${news['author'] ?? 'NewsData'} • ${news['date'] ?? 'Gần đây'}',
+                        style: GoogleFonts.afacad(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF8B5CF6).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        news['category'] ?? 'Tất cả',
+                        style: GoogleFonts.afacad(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF8B5CF6),
+                        ),
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: 16),
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: DecorationImage(
-                      image: AssetImage(news['image']),
-                      fit: BoxFit.cover,
+                
+                // Main image
+                if ((news['image'] ?? '').isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    height: 220,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: NetworkImage(news['image']),
+                        fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {},
+                      ),
+                    ),
+                    child: news['image'].toString().startsWith('http')
+                        ? Image.network(
+                            news['image'],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[300],
+                                child: Icon(Icons.image_not_supported),
+                              );
+                            },
+                          )
+                        : SizedBox.shrink(),
+                  ),
+                SizedBox(height: 16),
+                
+                // Description/Summary
+                if ((news['description'] ?? '').isNotEmpty)
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF8B5CF6).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      news['description'] ?? '',
+                      style: GoogleFonts.afacad(
+                        fontSize: 13,
+                        height: 1.6,
+                        color: Colors.grey[800],
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
-                ),
                 SizedBox(height: 16),
+                
+                // Full content
                 Text(
-                  news['content'],
+                  news['content'] ?? 'Không có nội dung',
                   style: GoogleFonts.afacad(
-                    fontSize: 14,
-                    height: 1.6,
+                    fontSize: 15,
+                    height: 1.8,
+                    color: Colors.black87,
                   ),
                 ),
-                SizedBox(height: 16),
-                Text(
-                  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '
-                  'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. '
-                  'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris...',
-                  style: GoogleFonts.afacad(
-                    fontSize: 14,
-                    height: 1.6,
-                    color: Colors.grey[700],
+                SizedBox(height: 24),
+                
+                // Read full article button
+                if ((news['url'] ?? '').isNotEmpty)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _openUrl(news['url']);
+                    },
+                    icon: Icon(Icons.open_in_new),
+                    label: Text(
+                      'Đọc bài viết đầy đủ',
+                      style: GoogleFonts.afacad(fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF8B5CF6),
+                      foregroundColor: Colors.white,
+                      minimumSize: Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-                ),
                 SizedBox(height: 32),
               ],
             ),

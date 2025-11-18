@@ -1,7 +1,7 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import './custom_bottom_nav.dart'; // Correct import for widgets directory
+import './custom_bottom_nav.dart';
 import './ai_chat_screen.dart';
 import './contact_screen.dart';
 import './community_screen.dart';
@@ -10,9 +10,39 @@ import './training_screen.dart';
 import './training_video_screen.dart';
 import './events_screen.dart';
 import './dating_screen.dart';
+import '../services/news_service.dart';
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({Key? key}) : super(key: key);
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<Map<String, dynamic>> newsItems = [];
+  bool isLoadingNews = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTopNews();
+  }
+
+  Future<void> _loadTopNews() async {
+    try {
+      final news = await NewsService.getPetNews();
+      setState(() {
+        newsItems = news.take(3).toList();
+        isLoadingNews = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingNews = false;
+      });
+      print('Error loading news: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,35 +169,37 @@ class HomeScreen extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                SizedBox(
-                  height: 240, // Further increased height to prevent overflow
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _bigNewsCard(
-                        title: 'Sức khỏe',
-                        imagePath: 'lib/res/drawables/setting/tag-SK.png',
-                        subtitle: '5 BÀI VIẾT · 3-10 PHÚT',
-                        color: const Color(0xFFEDE9FE),
-                      ),
-                      _bigNewsCard(
-                        title: 'Giải trí',
-                        imagePath: 'lib/res/drawables/setting/tag-VN.png',
-                        subtitle: '3 BÀI VIẾT · 3-10 PHÚT',
-                        color: const Color(0xFFFFF7ED),
-                      ),
-                      _bigNewsCard(
-                        title: 'Huấn luyện',
-                        imagePath: 'lib/res/drawables/setting/tag-HL.jpg',
-                        subtitle: '3 BÀI',
-                        color: const Color(0xFFE0F2FE),
-                      ),
-                    ],
-                  ),
-                ),
+                isLoadingNews
+                    ? SizedBox(
+                        height: 240,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: const Color(0xFF8B5CF6),
+                          ),
+                        ),
+                      )
+                    : newsItems.isEmpty
+                        ? SizedBox(
+                            height: 240,
+                            child: Center(
+                              child: Text(
+                                'Không có bài viết',
+                                style: GoogleFonts.afacad(color: Colors.grey),
+                              ),
+                            ),
+                          )
+                        : SizedBox(
+                            height: 240,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: newsItems
+                                  .map((news) => _newsCardFromApi(context, news))
+                                  .toList(),
+                            ),
+                          ),
 
                 const SizedBox(
-                    height: 120), // space above bottom nav and fixed button
+                    height: 120),
               ],
             ),
           ),
@@ -226,65 +258,196 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _bigNewsCard({
-    required String title,
-    required String imagePath,
-    required String subtitle,
-    required Color color,
-  }) {
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        // Removed boxShadow
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 220,
-            height: 150,
-            margin: const EdgeInsets.only(top: 0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              image: DecorationImage(
-                image: AssetImage(imagePath),
-                fit: BoxFit.cover,
+  Widget _newsCardFromApi(BuildContext context, Map<String, dynamic> news) {
+    return GestureDetector(
+      onTap: () {
+        _showNewsDetail(context, news);
+      },
+      child: Container(
+        width: 220,
+        margin: const EdgeInsets.only(right: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 220,
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              child: (news['image'] ?? '').toString().startsWith('http')
+                  ? Image.network(
+                      news['image'],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.image_not_supported),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image_not_supported),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    news['title'] ?? 'Không có tiêu đề',
+                    style: GoogleFonts.afacad(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${news['author'] ?? 'NewsData'} • ${news['date'] ?? 'Gần đây'}',
+                    style: GoogleFonts.afacad(
+                      fontSize: 11,
+                      color: Colors.grey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    news['readTime'] ?? '1 phút',
+                    style: GoogleFonts.afacad(
+                      fontSize: 10,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.afacad(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black, // Changed to black
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.afacad(
-                    color: Colors.black,
-                    fontSize: 16, // Increased font size
-                    fontWeight: FontWeight.normal, // Not bold
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  void _showNewsDetail(BuildContext context, Map<String, dynamic> news) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  news['title'] ?? 'Không có tiêu đề',
+                  style: GoogleFonts.afacad(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${news['author'] ?? 'NewsData'} • ${news['date'] ?? 'Gần đây'}',
+                  style: GoogleFonts.afacad(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if ((news['image'] ?? '').isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: (news['image'] ?? '').toString().startsWith('http')
+                        ? Image.network(
+                            news['image'],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image_not_supported),
+                          ),
+                  ),
+                const SizedBox(height: 16),
+                if ((news['description'] ?? '').isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      news['description'] ?? '',
+                      style: GoogleFonts.afacad(
+                        fontSize: 13,
+                        height: 1.6,
+                        color: Colors.grey[800],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  news['content'] ?? 'Không có nội dung',
+                  style: GoogleFonts.afacad(
+                    fontSize: 15,
+                    height: 1.8,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 }
 
 class MenuIconRow extends StatefulWidget {

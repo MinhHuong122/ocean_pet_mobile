@@ -138,7 +138,7 @@ class _DatingScreenState extends State<DatingScreen>
         elevation: 0,
         toolbarHeight: 70,
         title: Text(
-          'Hẹn hò thú cưng',
+          'Hẹn hò',
           style: GoogleFonts.afacad(
             fontSize: 26,
             fontWeight: FontWeight.bold,

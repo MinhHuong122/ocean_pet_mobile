@@ -25,7 +25,9 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _initializePlayer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializePlayer();
+    });
   }
 
   void _initializePlayer() {
@@ -44,12 +46,20 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
           ),
         );
         _controller.addListener(_listener);
-        _isPlayerReady = true;
+        if (mounted) {
+          setState(() {
+            _isPlayerReady = true;
+          });
+        }
       } else {
-        _showError('Video ID không hợp lệ');
+        if (mounted) {
+          _showError('Video ID không hợp lệ');
+        }
       }
     } catch (e) {
-      _showError('Lỗi khi khởi tạo player: $e');
+      if (mounted) {
+        _showError('Lỗi khi khởi tạo player: $e');
+      }
     }
   }
 
