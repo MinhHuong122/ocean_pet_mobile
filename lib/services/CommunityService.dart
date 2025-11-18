@@ -1,105 +1,133 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
-/// Service quản lý tính năng cộng đồng
-/// Hỗ trợ: Bài viết, bình luận, like, trending topics
 class CommunityService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final FirebaseAuth _auth = FirebaseAuth.instance;
-  static final FirebaseStorage _storage = FirebaseStorage.instance;
+  static const String _defaultCommunityId = 'general';
 
-  static String? get currentUserId => _auth.currentUser?.uid;
+  // ==================== POST MANAGEMENT ====================
 
-  // ==================== COMMUNITY POSTS ====================
-
-  /// Tạo bài viết cộng đồng
+  /// Create a new community post with image support
   static Future<String> createPost({
-    required String communityId,
     required String title,
     required String content,
-    String? imageUrl, // Cloudinary URL
-    List<String>? tags,
+    String? imageUrl,
+    String communityId = _defaultCommunityId,
   }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not logged in');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
 
-      final postId = _firestore
+      final docRef = await FirebaseFirestore.instance
           .collection('communities')
           .doc(communityId)
           .collection('posts')
-          .doc()
-          .id;
-
-      await _firestore
-          .collection('communities')
-          .doc(communityId)
-          .collection('posts')
-          .doc(postId)
-          .set({
-        'id': postId,
-        'user_id': userId,
+          .add({
         'title': title,
         'content': content,
         'image_url': imageUrl,
-        'tags': tags ?? [],
+        'created_by': user.uid,
+        'created_at': FieldValue.serverTimestamp(),
         'likes_count': 0,
         'comments_count': 0,
-        'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      return postId;
+      return docRef.id;
     } catch (e) {
       print('Error creating post: $e');
       rethrow;
     }
   }
 
-  /// Lấy bài viết của cộng đồng (real-time)
+  /// Get stream of community posts ordered by creation date
   static Stream<List<Map<String, dynamic>>> getCommunityPosts(
-    String communityId,
+    String communityId = _defaultCommunityId,
   ) {
-    return _firestore
-        .collection('communities')
-        .doc(communityId)
-        .collection('posts')
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
-    });
+    try {
+      return FirebaseFirestore.instance
+          .collection('communities')
+          .doc(communityId)
+          .collection('posts')
+          .orderBy('created_at', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
+      });
+    } catch (e) {
+      print('Error getting posts: $e');
+      return Stream.value([]);
+    }
   }
 
-  /// Like bài viết
-  static Future<void> likePost(
-    String communityId,
-    String postId,
-  ) async {
+  /// Delete a post (only by creator)
+  static Future<void> deletePost(
+    String postId, {
+    String communityId = _defaultCommunityId,
+  }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not logged in');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
 
-      await _firestore
+      final doc = await FirebaseFirestore.instance
           .collection('communities')
           .doc(communityId)
           .collection('posts')
           .doc(postId)
-          .collection('likes')
-          .doc(userId)
-          .set({'liked_at': FieldValue.serverTimestamp()});
+          .get();
 
-      // Update likes count
-      await _firestore
+      if (doc.data()?['created_by'] != user.uid) {
+        throw Exception('You can only delete your own posts');
+      }
+
+      await doc.reference.delete();
+    } catch (e) {
+      print('Error deleting post: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== LIKE MANAGEMENT ====================
+
+  /// Like a post with real-time counter update
+  static Future<void> likePost(
+    String postId, {
+    String communityId = _defaultCommunityId,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
+
+      final db = FirebaseFirestore.instance;
+      final postsRef = db
           .collection('communities')
           .doc(communityId)
           .collection('posts')
-          .doc(postId)
-          .update({
-        'likes_count': FieldValue.increment(1),
+          .doc(postId);
+
+      await db.runTransaction((transaction) async {
+        // Add like
+        transaction.set(
+          db
+              .collection('communities')
+              .doc(communityId)
+              .collection('likes')
+              .doc('${postId}_${user.uid}'),
+          {
+            'post_id': postId,
+            'user_id': user.uid,
+            'created_at': FieldValue.serverTimestamp(),
+          },
+        );
+
+        // Increment counter
+        transaction.update(postsRef, {
+          'likes_count': FieldValue.increment(1),
+        });
       });
     } catch (e) {
       print('Error liking post: $e');
@@ -107,32 +135,36 @@ class CommunityService {
     }
   }
 
-  /// Unlike bài viết
+  /// Unlike a post with real-time counter update
   static Future<void> unlikePost(
-    String communityId,
-    String postId,
-  ) async {
+    String postId, {
+    String communityId = _defaultCommunityId,
+  }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not logged in');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
 
-      await _firestore
+      final db = FirebaseFirestore.instance;
+      final postsRef = db
           .collection('communities')
           .doc(communityId)
           .collection('posts')
-          .doc(postId)
-          .collection('likes')
-          .doc(userId)
-          .delete();
+          .doc(postId);
 
-      // Update likes count
-      await _firestore
-          .collection('communities')
-          .doc(communityId)
-          .collection('posts')
-          .doc(postId)
-          .update({
-        'likes_count': FieldValue.increment(-1),
+      await db.runTransaction((transaction) async {
+        // Remove like
+        transaction.delete(
+          db
+              .collection('communities')
+              .doc(communityId)
+              .collection('likes')
+              .doc('${postId}_${user.uid}'),
+        );
+
+        // Decrement counter
+        transaction.update(postsRef, {
+          'likes_count': FieldValue.increment(-1),
+        });
       });
     } catch (e) {
       print('Error unliking post: $e');
@@ -140,193 +172,142 @@ class CommunityService {
     }
   }
 
-  /// Kiểm tra user đã like post này chưa
-  static Future<bool> hasUserLikedPost(
-    String communityId,
-    String postId,
-  ) async {
+  // ==================== COMMENT MANAGEMENT ====================
+
+  /// Add comment to a post
+  static Future<String> addComment({
+    required String postId,
+    required String content,
+    String communityId = _defaultCommunityId,
+  }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) return false;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
 
-      final doc = await _firestore
+      final db = FirebaseFirestore.instance;
+      final postRef = db
           .collection('communities')
           .doc(communityId)
           .collection('posts')
-          .doc(postId)
-          .collection('likes')
-          .doc(userId)
-          .get();
+          .doc(postId);
 
-      return doc.exists;
-    } catch (e) {
-      print('Error checking like: $e');
-      return false;
-    }
-  }
+      final commentRef = await db.runTransaction((transaction) async {
+        // Get and increment comment count
+        final postData = await transaction.get(postRef);
+        final currentCount = postData.data()?['comments_count'] ?? 0;
 
-  /// Thêm bình luận vào bài viết
-  static Future<String> addComment(
-    String communityId,
-    String postId,
-    String content,
-  ) async {
-    try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not logged in');
+        transaction.update(postRef, {
+          'comments_count': currentCount + 1,
+        });
 
-      final commentId = _firestore
-          .collection('communities')
-          .doc(communityId)
-          .collection('posts')
-          .doc(postId)
-          .collection('comments')
-          .doc()
-          .id;
+        // Add comment
+        final newComment = db
+            .collection('communities')
+            .doc(communityId)
+            .collection('posts')
+            .doc(postId)
+            .collection('comments')
+            .doc();
 
-      await _firestore
-          .collection('communities')
-          .doc(communityId)
-          .collection('posts')
-          .doc(postId)
-          .collection('comments')
-          .doc(commentId)
-          .set({
-        'id': commentId,
-        'user_id': userId,
-        'content': content,
-        'created_at': FieldValue.serverTimestamp(),
+        transaction.set(newComment, {
+          'content': content,
+          'created_by': user.uid,
+          'created_at': FieldValue.serverTimestamp(),
+        });
+
+        return newComment.id;
       });
 
-      // Update comments count
-      await _firestore
-          .collection('communities')
-          .doc(communityId)
-          .collection('posts')
-          .doc(postId)
-          .update({
-        'comments_count': FieldValue.increment(1),
-      });
-
-      return commentId;
+      return commentRef as String;
     } catch (e) {
       print('Error adding comment: $e');
       rethrow;
     }
   }
 
-  /// Lấy bình luận của bài viết (real-time)
+  /// Get stream of comments for a post
   static Stream<List<Map<String, dynamic>>> getPostComments(
-    String communityId,
-    String postId,
-  ) {
-    return _firestore
-        .collection('communities')
-        .doc(communityId)
-        .collection('posts')
-        .doc(postId)
-        .collection('comments')
-        .orderBy('created_at', descending: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
-    });
-  }
-
-  /// Xóa bài viết
-  static Future<void> deletePost(
-    String communityId,
-    String postId,
-  ) async {
+    String postId, {
+    String communityId = _defaultCommunityId,
+  }) {
     try {
-      await _firestore
+      return FirebaseFirestore.instance
           .collection('communities')
           .doc(communityId)
           .collection('posts')
           .doc(postId)
-          .delete();
+          .collection('comments')
+          .orderBy('created_at', descending: false)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
+      });
     } catch (e) {
-      print('Error deleting post: $e');
-      rethrow;
+      print('Error getting comments: $e');
+      return Stream.value([]);
     }
   }
 
-  /// Lấy trending topics (real-time)
-  static Stream<List<Map<String, dynamic>>> getTrendingTopics() {
-    return _firestore
-        .collection('trending_topics')
-        .orderBy('post_count', descending: true)
-        .limit(10)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
-    });
+  // ==================== TRENDING & SEARCH ====================
+
+  /// Get stream of trending topics
+  static Stream<List<Map<String, dynamic>>> getTrendingTopics(
+    String communityId = _defaultCommunityId,
+  ) {
+    try {
+      return FirebaseFirestore.instance
+          .collection('trending_topics')
+          .where('community_id', isEqualTo: communityId)
+          .orderBy('post_count', descending: true)
+          .limit(10)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
+      });
+    } catch (e) {
+      print('Error getting trending topics: $e');
+      return Stream.value([]);
+    }
   }
 
-  /// Cập nhật trending topic count
-  static Future<void> updateTrendingTopic(String topic) async {
+  /// Search posts by keyword
+  static Stream<List<Map<String, dynamic>>> searchPosts(
+    String keyword, {
+    String communityId = _defaultCommunityId,
+  }) {
     try {
-      final docId = topic.replaceAll('#', '').replaceAll(' ', '_');
-
-      final doc = await _firestore.collection('trending_topics').doc(docId).get();
-
-      if (doc.exists) {
-        await _firestore.collection('trending_topics').doc(docId).update({
-          'post_count': FieldValue.increment(1),
-          'updated_at': FieldValue.serverTimestamp(),
-        });
-      } else {
-        await _firestore.collection('trending_topics').doc(docId).set({
-          'id': docId,
-          'topic': topic,
-          'post_count': 1,
-          'created_at': FieldValue.serverTimestamp(),
-          'updated_at': FieldValue.serverTimestamp(),
-        });
+      if (keyword.isEmpty) {
+        return getCommunityPosts(communityId);
       }
-    } catch (e) {
-      print('Error updating trending topic: $e');
-    }
-  }
 
-  /// Tìm kiếm bài viết theo keyword
-  static Future<List<Map<String, dynamic>>> searchPosts(
-    String communityId,
-    String keyword,
-  ) async {
-    try {
-      final snapshot = await _firestore
+      return FirebaseFirestore.instance
           .collection('communities')
           .doc(communityId)
           .collection('posts')
           .where('title', isGreaterThanOrEqualTo: keyword)
           .where('title', isLessThan: keyword + 'z')
-          .get();
-
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
+      });
     } catch (e) {
       print('Error searching posts: $e');
-      return [];
-    }
-  }
-
-  /// Lấy tất cả communities
-  static Future<List<Map<String, dynamic>>> getAllCommunities() async {
-    try {
-      final snapshot = await _firestore.collection('communities').get();
-
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
-    } catch (e) {
-      print('Error fetching communities: $e');
-      return [];
+      return Stream.value([]);
     }
   }
 }

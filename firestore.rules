@@ -240,64 +240,68 @@ service cloud.firestore {
     }
 
     // ==================== COMMUNITY COLLECTION ====================
-    // Communities are public, but only members can create posts
+    // Public read for posts, authenticated users can create/modify their own
     match /communities/{communityId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
-      
-      // Community posts subcollection
+      // Posts subcollection
       match /posts/{postId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
-        allow update, delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+        allow read: if true; // Public read
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && resource.data.created_by == request.auth.uid;
         
         // Comments subcollection
         match /comments/{commentId} {
-          allow read: if isAuthenticated();
-          allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
-          allow update, delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
-        }
-        
-        // Likes subcollection
-        match /likes/{userId} {
-          allow read, create, delete: if isAuthenticated() && userId == request.auth.uid;
+          allow read: if true;
+          allow create: if isAuthenticated();
+          allow delete: if isAuthenticated() && resource.data.created_by == request.auth.uid;
         }
       }
-    }
-
-    // ==================== EVENTS COLLECTION ====================
-    // Events are public, anyone authenticated can view
-    match /events/{eventId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated(); // Any user can create events
-      allow update, delete: if isAuthenticated() && resource.data.creator_id == request.auth.uid;
       
-      // Event attendees subcollection
-      match /attendees/{userId} {
-        allow read: if isAuthenticated();
-        allow create, delete: if isAuthenticated() && userId == request.auth.uid;
-      }
-    }
-
-    // ==================== TRAINING VIDEOS COLLECTION ====================
-    // Training videos are public
-    match /training_videos/{videoId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated(); // Any user can upload (should restrict to trainers in prod)
-      allow update, delete: if isAuthenticated() && resource.data.uploader_id == request.auth.uid;
-      
-      // Video ratings subcollection
-      match /ratings/{userId} {
-        allow read: if isAuthenticated();
-        allow create, update, delete: if isAuthenticated() && userId == request.auth.uid;
+      // Likes subcollection
+      match /likes/{likeId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
       }
     }
 
     // ==================== TRENDING TOPICS COLLECTION ====================
-    // Public trending topics
+    // Public read for trending topics
     match /trending_topics/{topicId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated(); // System-generated in prod
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    // ==================== EVENTS COLLECTION ====================
+    // Public read for events, authenticated users can create and RSVP
+    match /events/{eventId} {
+      allow read: if true; // Public read
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.created_by == request.auth.uid;
+      
+      // Attendees subcollection
+      match /attendees/{userId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && userId == request.auth.uid;
+        allow delete: if isAuthenticated() && userId == request.auth.uid;
+      }
+    }
+
+    // ==================== TRAINING VIDEOS COLLECTION ====================
+    // Public read for training videos, authenticated users can create and rate
+    match /training_videos/{videoId} {
+      allow read: if true; // Public read
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.created_by == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['view_count', 'rating', 'rating_count']));
+      allow delete: if isAuthenticated() && resource.data.created_by == request.auth.uid;
+      
+      // Ratings subcollection
+      match /ratings/{ratingId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && ratingId == request.auth.uid;
+        allow update: if isAuthenticated() && ratingId == request.auth.uid;
+        allow delete: if isAuthenticated() && ratingId == request.auth.uid;
+      }
     }
   }
 }

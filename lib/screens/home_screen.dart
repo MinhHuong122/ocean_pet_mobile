@@ -4,10 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import './custom_bottom_nav.dart'; // Correct import for widgets directory
 import './ai_chat_screen.dart';
 import './contact_screen.dart';
-import './community_screen_new.dart';
+import './community_screen.dart';
 import './news_screen.dart';
-import './training_screen_new.dart';
-import './events_screen_new.dart';
+import './training_screen.dart';
+import './training_video_screen.dart';
+import './events_screen.dart';
 import './dating_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -420,10 +421,10 @@ class _MenuIconRowState extends State<MenuIconRow> {
         screen = const DatingScreen();
         break;
       case 3:
-        screen = const TrainingScreenNew();
+        screen = const TrainingVideoScreen();
         break;
       case 4:
-        screen = const EventsScreenNew();
+        screen = const EventsScreen();
         break;
       default:
         return;

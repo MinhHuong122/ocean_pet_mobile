@@ -1,36 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Service quản lý sự kiện
-/// Hỗ trợ: Tạo event, RSVP, lấy events, filtering
 class EventsService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final FirebaseAuth _auth = FirebaseAuth.instance;
+  // ==================== EVENT MANAGEMENT ====================
 
-  static String? get currentUserId => _auth.currentUser?.uid;
-
-  // ==================== EVENTS ====================
-
-  /// Tạo sự kiện mới
+  /// Create a new event with type filtering
   static Future<String> createEvent({
     required String title,
     required String description,
     required DateTime startDate,
     required DateTime endDate,
     required String location,
-    String? imageUrl, // Cloudinary URL
-    required String eventType, // upcoming, ongoing, past
-    int? maxAttendees,
+    String? imageUrl,
+    String eventType = 'upcoming',
   }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not logged in');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
 
-      final eventId = _firestore.collection('events').doc().id;
-
-      await _firestore.collection('events').doc(eventId).set({
-        'id': eventId,
-        'creator_id': userId,
+      final docRef = await FirebaseFirestore.instance.collection('events').add({
         'title': title,
         'description': description,
         'start_date': startDate,
@@ -38,226 +26,229 @@ class EventsService {
         'location': location,
         'image_url': imageUrl,
         'event_type': eventType,
-        'max_attendees': maxAttendees,
-        'attendees_count': 0,
+        'created_by': user.uid,
         'created_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
+        'attendees_count': 0,
       });
 
-      return eventId;
+      // Create attendee entry for event creator
+      await docRef.collection('attendees').doc(user.uid).set({
+        'user_id': user.uid,
+        'joined_at': FieldValue.serverTimestamp(),
+      });
+
+      // Update attendees count
+      await docRef.update({
+        'attendees_count': FieldValue.increment(1),
+      });
+
+      return docRef.id;
     } catch (e) {
       print('Error creating event: $e');
       rethrow;
     }
   }
 
-  /// Lấy events theo loại (real-time)
+  /// Get events stream filtered by type (upcoming/ongoing/past)
   static Stream<List<Map<String, dynamic>>> getEventsByType(String eventType) {
-    return _firestore
-        .collection('events')
-        .where('event_type', isEqualTo: eventType)
-        .orderBy('start_date', descending: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
-    });
-  }
-
-  /// Lấy tất cả events (real-time)
-  static Stream<List<Map<String, dynamic>>> getAllEvents() {
-    return _firestore
-        .collection('events')
-        .orderBy('start_date', descending: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
-    });
-  }
-
-  /// Lấy chi tiết event
-  static Future<Map<String, dynamic>?> getEventDetails(String eventId) async {
     try {
-      final doc = await _firestore.collection('events').doc(eventId).get();
-
-      if (doc.exists) {
-        return {...doc.data(), 'id': doc.id};
-      }
-      return null;
-    } catch (e) {
-      print('Error fetching event details: $e');
-      return null;
-    }
-  }
-
-  /// RSVP cho sự kiện
-  static Future<void> rsvpEvent(String eventId) async {
-    try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not logged in');
-
-      // Thêm user vào danh sách attendees
-      await _firestore
+      return FirebaseFirestore.instance
           .collection('events')
-          .doc(eventId)
-          .collection('attendees')
-          .doc(userId)
-          .set({
-        'user_id': userId,
-        'rsvp_date': FieldValue.serverTimestamp(),
-        'status': 'going',
-      });
-
-      // Cập nhật đếm attendees
-      await _firestore.collection('events').doc(eventId).update({
-        'attendees_count': FieldValue.increment(1),
+          .where('event_type', isEqualTo: eventType)
+          .orderBy('start_date', descending: false)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
       });
     } catch (e) {
-      print('Error RSVPing event: $e');
-      rethrow;
+      print('Error getting events by type: $e');
+      return Stream.value([]);
     }
   }
 
-  /// Hủy RSVP
-  static Future<void> unrsvpEvent(String eventId) async {
-    try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not logged in');
-
-      // Xóa user khỏi danh sách attendees
-      await _firestore
-          .collection('events')
-          .doc(eventId)
-          .collection('attendees')
-          .doc(userId)
-          .delete();
-
-      // Cập nhật đếm attendees
-      await _firestore.collection('events').doc(eventId).update({
-        'attendees_count': FieldValue.increment(-1),
-      });
-    } catch (e) {
-      print('Error unRSVPing event: $e');
-      rethrow;
-    }
-  }
-
-  /// Kiểm tra user đã RSVP event này chưa
+  /// Check if user has RSVP'd to an event
   static Future<bool> hasUserRSVPed(String eventId) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) return false;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
 
-      final doc = await _firestore
+      final doc = await FirebaseFirestore.instance
           .collection('events')
           .doc(eventId)
           .collection('attendees')
-          .doc(userId)
+          .doc(user.uid)
           .get();
 
       return doc.exists;
     } catch (e) {
-      print('Error checking RSVP: $e');
+      print('Error checking RSVP status: $e');
       return false;
     }
   }
 
-  /// Lấy danh sách attendees của event
+  /// RSVP to an event with attendee count update (persisted in Firebase)
+  static Future<void> rsvpEvent(String eventId) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
+
+      final db = FirebaseFirestore.instance;
+      final eventRef = db.collection('events').doc(eventId);
+
+      // Check if already RSVP'd
+      final attendeeDoc =
+          await eventRef.collection('attendees').doc(user.uid).get();
+      if (attendeeDoc.exists) {
+        throw Exception('Already RSVP\'d to this event');
+      }
+
+      await db.runTransaction((transaction) async {
+        // Add attendee
+        transaction.set(
+          eventRef.collection('attendees').doc(user.uid),
+          {
+            'user_id': user.uid,
+            'joined_at': FieldValue.serverTimestamp(),
+          },
+        );
+
+        // Increment attendees count
+        transaction.update(eventRef, {
+          'attendees_count': FieldValue.increment(1),
+        });
+      });
+    } catch (e) {
+      print('Error RSVP to event: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove RSVP from an event with attendee count update (persisted in Firebase)
+  static Future<void> unrsvpEvent(String eventId) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('User must be authenticated');
+
+      final db = FirebaseFirestore.instance;
+      final eventRef = db.collection('events').doc(eventId);
+
+      await db.runTransaction((transaction) async {
+        // Remove attendee
+        transaction.delete(
+          eventRef.collection('attendees').doc(user.uid),
+        );
+
+        // Decrement attendees count
+        transaction.update(eventRef, {
+          'attendees_count': FieldValue.increment(-1),
+        });
+      });
+    } catch (e) {
+      print('Error unRSVP from event: $e');
+      rethrow;
+    }
+  }
+
+  /// Get real-time stream of event attendees
   static Stream<List<Map<String, dynamic>>> getEventAttendees(String eventId) {
-    return _firestore
-        .collection('events')
-        .doc(eventId)
-        .collection('attendees')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
-    });
-  }
-
-  /// Cập nhật event
-  static Future<void> updateEvent(
-    String eventId, {
-    String? title,
-    String? description,
-    DateTime? startDate,
-    DateTime? endDate,
-    String? location,
-    String? imageUrl,
-  }) async {
     try {
-      final updates = <String, dynamic>{};
-      if (title != null) updates['title'] = title;
-      if (description != null) updates['description'] = description;
-      if (startDate != null) updates['start_date'] = startDate;
-      if (endDate != null) updates['end_date'] = endDate;
-      if (location != null) updates['location'] = location;
-      if (imageUrl != null) updates['image_url'] = imageUrl;
-      updates['updated_at'] = FieldValue.serverTimestamp();
-
-      await _firestore.collection('events').doc(eventId).update(updates);
+      return FirebaseFirestore.instance
+          .collection('events')
+          .doc(eventId)
+          .collection('attendees')
+          .orderBy('joined_at', descending: false)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
+      });
     } catch (e) {
-      print('Error updating event: $e');
-      rethrow;
+      print('Error getting event attendees: $e');
+      return Stream.value([]);
     }
   }
 
-  /// Xóa event
-  static Future<void> deleteEvent(String eventId) async {
+  /// Get events the current user is attending (persisted across app restarts)
+  static Stream<List<Map<String, dynamic>>> getUserEvents() {
     try {
-      await _firestore.collection('events').doc(eventId).delete();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return Stream.value([]);
+
+      return FirebaseFirestore.instance
+          .collectionGroup('attendees')
+          .where('user_id', isEqualTo: user.uid)
+          .snapshots()
+          .asyncMap((attendeesSnapshot) async {
+        final eventIds = attendeesSnapshot.docs
+            .map((doc) => doc.reference.parent.parent?.id)
+            .whereType<String>()
+            .toList();
+
+        if (eventIds.isEmpty) {
+          return [];
+        }
+
+        final eventsSnapshot = await FirebaseFirestore.instance
+            .collection('events')
+            .where(FieldPath.documentId, whereIn: eventIds)
+            .get();
+
+        return eventsSnapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
+      });
     } catch (e) {
-      print('Error deleting event: $e');
-      rethrow;
+      print('Error getting user events: $e');
+      return Stream.value([]);
     }
   }
 
-  /// Tìm kiếm events theo keyword
-  static Future<List<Map<String, dynamic>>> searchEvents(String keyword) async {
+  /// Search events by keyword
+  static Stream<List<Map<String, dynamic>>> searchEvents(String keyword) {
     try {
-      final snapshot = await _firestore
+      if (keyword.isEmpty) {
+        return FirebaseFirestore.instance
+            .collection('events')
+            .orderBy('start_date', descending: false)
+            .snapshots()
+            .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => {
+                    'id': doc.id,
+                    ...doc.data(),
+                  })
+              .toList();
+        });
+      }
+
+      return FirebaseFirestore.instance
           .collection('events')
           .where('title', isGreaterThanOrEqualTo: keyword)
           .where('title', isLessThan: keyword + 'z')
-          .get();
-
-      return snapshot.docs
-          .map((doc) => {...doc.data(), 'id': doc.id})
-          .toList();
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList();
+      });
     } catch (e) {
       print('Error searching events: $e');
-      return [];
+      return Stream.value([]);
     }
-  }
-
-  /// Lấy events của user (events mà user đã RSVP)
-  static Stream<List<Map<String, dynamic>>> getUserEvents() {
-    final userId = currentUserId;
-    if (userId == null) return Stream.value([]);
-
-    return _firestore
-        .collectionGroup('attendees')
-        .where('user_id', isEqualTo: userId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      final eventIds = snapshot.docs
-          .map((doc) => doc.reference.parent.parent?.id)
-          .whereType<String>()
-          .toList();
-
-      final events = <Map<String, dynamic>>[];
-      for (final eventId in eventIds) {
-        final eventDoc = await _firestore.collection('events').doc(eventId).get();
-        if (eventDoc.exists) {
-          events.add({...eventDoc.data(), 'id': eventDoc.id});
-        }
-      }
-
-      return events;
-    });
   }
 }
