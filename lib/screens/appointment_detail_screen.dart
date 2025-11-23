@@ -281,12 +281,18 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                             size: 20,
                           ),
                           const SizedBox(width: 12),
-                          Text(
-                            _selectedTime.format(context),
-                            style: GoogleFonts.afacad(
-                              fontSize: 16,
-                              color: const Color(0xFF22223B),
+                          Expanded(
+                            child: Text(
+                              _selectedTime.format(context),
+                              style: GoogleFonts.afacad(
+                                fontSize: 16,
+                                color: const Color(0xFF22223B),
+                              ),
                             ),
+                          ),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            color: const Color(0xFF8E97FD).withOpacity(0.5),
                           ),
                         ],
                       ),
@@ -648,11 +654,19 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime,
+      useRootNavigator: false,
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF8E97FD),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: const Color(0xFF22223B),
+            ),
+            textTheme: Theme.of(context).textTheme.apply(
+              bodyColor: const Color(0xFF22223B),
+              displayColor: const Color(0xFF22223B),
             ),
           ),
           child: child!,
