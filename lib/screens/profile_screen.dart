@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/FirebaseService.dart';
+import 'package:ocean_pet/services/UserProfileService.dart';
 import 'package:ocean_pet/services/QuickLoginService.dart';
 import './custom_bottom_nav.dart';
 import 'login_screen.dart';
@@ -98,17 +99,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      // Lấy thông tin từ Firebase Auth nếu user đăng nhập bằng Google
+      // Lấy thông tin từ Firebase Firestore (user profile)
       final firebaseUser = FirebaseAuth.instance.currentUser;
 
       if (firebaseUser != null) {
-        // User đăng nhập qua Firebase (Google/Facebook)
-        setState(() {
-          userName = firebaseUser.displayName ?? 'Người dùng';
-          userEmail = firebaseUser.email ?? '';
-          avatarUrl = firebaseUser.photoURL;
-          isLoading = false;
-        });
+        // Lấy profile từ Firestore
+        final userProfile = await UserProfileService.getUserProfile();
+        
+        if (userProfile != null) {
+          // Load from Firestore user profile
+          setState(() {
+            userName = userProfile['name'] ?? firebaseUser.displayName ?? 'Người dùng';
+            userEmail = userProfile['email'] ?? firebaseUser.email ?? '';
+            avatarUrl = userProfile['avatar_url'] ?? firebaseUser.photoURL;
+            isLoading = false;
+          });
+          print('✅ [ProfileScreen] User profile loaded from Firestore');
+        } else {
+          // Fallback to Firebase Auth if no Firestore profile
+          setState(() {
+            userName = firebaseUser.displayName ?? 'Người dùng';
+            userEmail = firebaseUser.email ?? '';
+            avatarUrl = firebaseUser.photoURL;
+            isLoading = false;
+          });
+          print('⚠️ [ProfileScreen] Using Firebase Auth data (no Firestore profile)');
+        }
       } else {
         // User đăng nhập qua email/password, lấy từ MySQL
         final result = await AuthService.getUserInfo();
@@ -128,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     } catch (e) {
-      print('Lỗi load user info: $e');
+      print('❌ Lỗi load user info: $e');
       setState(() {
         isLoading = false;
       });
@@ -280,8 +296,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Icons.person_outline,
                   'Thông tin cá nhân',
                   'Chỉnh sửa hồ sơ của bạn',
-                  () {
-                    Navigator.push(
+                  () async {
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => ProfileDetailScreen(
@@ -295,11 +311,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               userEmail = newEmail;
                               avatarUrl = newAvatar;
                             });
-                            _loadUserInfo();
                           },
                         ),
                       ),
                     );
+                    
+                    // Reload user info from Firebase if update was successful
+                    if (result == true) {
+                      print('📝 [ProfileScreen] Update successful, reloading user info...');
+                      await _loadUserInfo();
+                    }
                   },
                 ),
                 _buildMenuOption(

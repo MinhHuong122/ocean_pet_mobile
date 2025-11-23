@@ -212,12 +212,27 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                         // Save to Firebase if enabled
                         if (widget.useFirebase) {
                           try {
+                            print('🔄 [ProfileDetail] Saving to Firebase...');
+                            print('  Name: ${nameController.text.trim()}');
+                            print('  Phone: ${phoneController.text.trim()}');
+                            print('  Address: ${addressController.text.trim()}');
+                            
                             await UserProfileService.updateUserProfile(
                               name: nameController.text.trim(),
                               phoneNumber: phoneController.text.trim(),
                               address: addressController.text.trim(),
                             );
+                            
+                            print('✅ [ProfileDetail] Successfully saved to Firebase');
+                            
                             if (mounted) {
+                              // Call onUpdate callback to update parent screen
+                              widget.onUpdate?.call(
+                                nameController.text.trim(),
+                                emailController.text.trim(),
+                                localAvatarPath ?? widget.avatarUrl,
+                              );
+                              
                               Navigator.pop(context, true);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -227,6 +242,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                               );
                             }
                           } catch (e) {
+                            print('❌ [ProfileDetail] Error saving to Firebase: $e');
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
