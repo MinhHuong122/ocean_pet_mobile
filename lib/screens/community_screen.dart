@@ -3,6 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/FirebaseService.dart';
+import '../services/CommunityService.dart';
+import '../services/UserProfileService.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -21,49 +25,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   final List<Map<String, dynamic>> notifications = [];
   int unreadNotifications = 0;
 
-  List<Map<String, dynamic>> communityPosts = [
-    {
-      'id': '2',
-      'author': 'Trần Thị B',
-      'avatar': '👩‍🦰',
-      'userId': 'user456',
-      'title': 'Mèo bị rụng lông nhiều - có nguy hiểm không?',
-      'content':
-          'Mình nhận thấy mèo nhà rụng lông khá nhiều những ngày này. Đây có phải dấu hiệu của bệnh gì không?',
-      'image': null,
-      'likes': 67,
-      'liked': false,
-      'comments': 23,
-      'shares': 8,
-      'time': '4 giờ trước',
-      'isPrivate': false,
-      'isBlocked': false,
-      'isHidden': false,
-      'commentsList': [
-        {'author': 'Nguyễn Văn A', 'avatar': '👨‍🦱', 'content': 'Cần đi khám thú y ngay', 'time': '3 giờ trước'},
-      ]
-    },
-    {
-      'id': '3',
-      'author': 'Lê Văn C',
-      'avatar': '👨‍💼',
-      'userId': 'user789',
-      'title': 'Kinh nghiệm chọn thức ăn cho cún yêu',
-      'content':
-          'Sau nhiều lần thử nghiệm, mình muốn chia sẻ kinh nghiệm chọn thức ăn tốt cho chó. Theo mình, chất lượng nguyên liệu là quan trọng nhất...',
-      'image': null,
-      'likes': 123,
-      'liked': false,
-      'comments': 45,
-      'shares': 12,
-      'time': '8 giờ trước',
-      'isPrivate': false,
-      'isBlocked': false,
-      'isHidden': false,
-      'commentsList': []
-    },
-  ];
-
+  List<Map<String, dynamic>> communityPosts = [];
   List<Map<String, dynamic>> filteredPosts = [];
   List<String> favoritedPostIds = [];
 
@@ -71,7 +33,110 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _loadCurrentUser();
-    filteredPosts = List.from(communityPosts);
+    _loadCommunityPosts();
+  }
+
+  Future<void> _loadCommunityPosts() async {
+    try {
+      print('📥 [CommunityScreen] Loading posts from Firebase...');
+      
+      // Subscribe to real-time updates from Firebase
+      CommunityService.getCommunityPosts().listen(
+        (postsFromFirebase) async {
+          print('✅ [CommunityScreen] Received ${postsFromFirebase.length} posts from Firebase');
+          
+          final processedPosts = <Map<String, dynamic>>[];
+          
+          for (var post in postsFromFirebase) {
+            try {
+              // Check privacy: show if public OR if current user is the owner
+              final isPrivate = post['is_private'] ?? false;
+              final createdBy = post['created_by'] ?? '';
+              final shouldShow = !isPrivate || createdBy == currentUserId;
+              
+              if (!shouldShow) {
+                print('🔒 [CommunityScreen] Skipping private post from $createdBy');
+                continue; // Skip private posts from other users
+              }
+              
+              // Get author info from users collection
+              final authorDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(createdBy)
+                  .get();
+              
+              final authorData = authorDoc.data() ?? {};
+              final authorName = authorData['name'] ?? 'Ẩn danh';
+              final authorAvatar = authorData['avatar_url'] ?? '👤';
+              
+              // Format time
+              DateTime createdAt = DateTime.now();
+              if (post['created_at'] is Timestamp) {
+                createdAt = (post['created_at'] as Timestamp).toDate();
+              }
+              final timeAgo = _getTimeAgo(createdAt);
+              
+              // Build processed post
+              final processedPost = {
+                'id': post['id'] ?? '',
+                'author': authorName,
+                'avatar': authorAvatar,
+                'userId': createdBy,
+                'title': post['title'] ?? '',
+                'content': post['content'] ?? '',
+                'image': post['image_url'], // From Cloudinary
+                'likes': post['likes_count'] ?? 0,
+                'liked': false, // Will be updated if user liked
+                'comments': post['comments_count'] ?? 0,
+                'shares': post['shares_count'] ?? 0,
+                'time': timeAgo,
+                'isPrivate': isPrivate,
+                'isBlocked': false,
+                'isHidden': false,
+                'commentsList': [],
+              };
+              
+              processedPosts.add(processedPost);
+              print('✅ [CommunityScreen] Processed post: ${post['title']}, Private: $isPrivate');
+            } catch (e) {
+              print('⚠️ [CommunityScreen] Error processing post: $e');
+              continue;
+            }
+          }
+          
+          setState(() {
+            communityPosts = processedPosts;
+            filteredPosts = List.from(communityPosts);
+            print('📊 [CommunityScreen] Updated UI with ${communityPosts.length} visible posts');
+          });
+        },
+        onError: (error) {
+          print('❌ [CommunityScreen] Error loading posts: $error');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi tải bài viết: $error')),
+          );
+        },
+      );
+    } catch (e) {
+      print('❌ [CommunityScreen] Error in _loadCommunityPosts: $e');
+    }
+  }
+  
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inSeconds < 60) {
+      return 'Vừa xong';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} phút trước';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} giờ trước';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ngày trước';
+    } else {
+      return '${(difference.inDays / 7).floor()} tuần trước';
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -741,37 +806,48 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (titleController.text.isNotEmpty && contentController.text.isNotEmpty && mounted) {
-                          setState(() {
-                            communityPosts.insert(0, {
-                              'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                              'author': 'Bạn',
-                              'avatar': '👤',
-                              'userId': currentUserId ?? 'current_user',
-                              'title': titleController.text,
-                              'content': contentController.text,
-                              'image': selectedImage?.path,
-                              'likes': 0,
-                              'liked': false,
-                              'comments': 0,
-                              'shares': 0,
-                              'time': 'Vừa xong',
-                              'isPrivate': isPrivate,
-                              'isBlocked': false,
-                              'isHidden': false,
-                              'commentsList': []
-                            });
-                            filteredPosts = List.from(communityPosts);
-                          });
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Đã đăng bài viết', style: GoogleFonts.afacad()),
-                              backgroundColor: const Color(0xFF66BB6A),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
+                          try {
+                            // Save to Firebase
+                            print('📤 [CommunityScreen] Creating post: ${titleController.text}');
+                            print('   Privacy: ${isPrivate ? 'Riêng tư' : 'Công khai'}');
+                            
+                            final postId = await CommunityService.createPost(
+                              title: titleController.text,
+                              content: contentController.text,
+                              imageUrl: null, // TODO: Upload to Cloudinary if image selected
+                            );
+                            
+                            // Add privacy field to post in Firebase
+                            await FirebaseFirestore.instance
+                                .collection('communities')
+                                .doc('general')
+                                .collection('posts')
+                                .doc(postId)
+                                .update({'is_private': isPrivate});
+                            
+                            print('✅ [CommunityScreen] Post created with ID: $postId');
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isPrivate ? 'Đã đăng bài riêng tư' : 'Đã đăng bài công khai',
+                                  style: GoogleFonts.afacad(),
+                                ),
+                                backgroundColor: const Color(0xFF66BB6A),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          } catch (e) {
+                            print('❌ [CommunityScreen] Error creating post: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Lỗi đăng bài: $e', style: GoogleFonts.afacad()),
+                                backgroundColor: const Color(0xFFEF5350),
+                              ),
+                            );
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
