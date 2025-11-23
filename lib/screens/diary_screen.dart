@@ -14,6 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import '../services/NotificationService.dart';
 
 // Model for Diary Entry
 class DiaryEntry {
@@ -3319,6 +3320,10 @@ Generated on: ${DateTime.now()}''';
             if (widget.entry.reminderDateTime != null)
               TextButton(
                 onPressed: () {
+                  // Cancel notification when removing reminder
+                  final notificationId = widget.entry.id.hashCode.abs();
+                  NotificationService.cancelAppointmentReminder(notificationId);
+                  
                   setState(() {
                     widget.entry.reminderDateTime = null;
                     _saveChanges();
@@ -3338,7 +3343,7 @@ Generated on: ${DateTime.now()}''';
               child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey)),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final reminderDateTime = DateTime(
                   selectedDate.year,
                   selectedDate.month,
@@ -3351,6 +3356,16 @@ Generated on: ${DateTime.now()}''';
                   widget.entry.reminderDateTime = reminderDateTime.toIso8601String();
                   _saveChanges();
                 });
+                
+                // Schedule notification for diary reminder
+                final notificationId = widget.entry.id.hashCode.abs();
+                await NotificationService.scheduleAppointmentReminder(
+                  appointmentId: notificationId,
+                  appointmentTitle: '📔 ${widget.entry.title}',
+                  appointmentTime: '${selectedTime.hour}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                  appointmentDateTime: reminderDateTime,
+                  reminderTime: '1day', // Direct reminder at the scheduled time
+                );
                 
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
