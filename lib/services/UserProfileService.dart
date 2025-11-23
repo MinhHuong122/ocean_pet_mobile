@@ -16,7 +16,7 @@ class UserProfileService {
 
       final doc = await _firestore.collection('users').doc(userId).get();
       if (doc.exists) {
-        return {...doc.data() as Map<String, dynamic>, 'id': doc.id};
+        return {...doc.data()!, 'id': doc.id};
       }
       return null;
     } catch (e) {
@@ -40,26 +40,33 @@ class UserProfileService {
   }) async {
     try {
       final userId = _currentUserId;
+      print('📍 [UserProfileService] userId: $userId');
       if (userId == null) throw Exception('User not logged in');
 
       final data = <String, dynamic>{};
 
-      if (name != null) data['name'] = name;
-      if (phoneNumber != null) data['phone_number'] = phoneNumber;
-      if (address != null) data['address'] = address;
-      if (bio != null) data['bio'] = bio;
-      if (avatarUrl != null) data['avatar_url'] = avatarUrl;
-      if (gender != null) data['gender'] = gender;
+      if (name != null && name.isNotEmpty) data['name'] = name;
+      if (phoneNumber != null && phoneNumber.isNotEmpty) data['phone_number'] = phoneNumber;
+      if (address != null && address.isNotEmpty) data['address'] = address;
+      if (bio != null && bio.isNotEmpty) data['bio'] = bio;
+      if (avatarUrl != null && avatarUrl.isNotEmpty) data['avatar_url'] = avatarUrl;
+      if (gender != null && gender.isNotEmpty) data['gender'] = gender;
       if (dateOfBirth != null) data['date_of_birth'] = Timestamp.fromDate(dateOfBirth);
-      if (city != null) data['city'] = city;
-      if (district != null) data['district'] = district;
-      if (ward != null) data['ward'] = ward;
+      if (city != null && city.isNotEmpty) data['city'] = city;
+      if (district != null && district.isNotEmpty) data['district'] = district;
+      if (ward != null && ward.isNotEmpty) data['ward'] = ward;
 
       data['updated_at'] = FieldValue.serverTimestamp();
 
+      print('📤 [UserProfileService] Sending data: $data');
+      print('📍 [UserProfileService] Firestore path: users/$userId');
+      
       await _firestore.collection('users').doc(userId).update(data);
+      
+      print('✅ [UserProfileService] Update successful!');
     } catch (e) {
-      print('Error updating user profile: $e');
+      print('❌ [UserProfileService] Error updating user profile: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
