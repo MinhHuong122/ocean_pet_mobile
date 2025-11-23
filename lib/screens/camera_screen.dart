@@ -278,64 +278,41 @@ class _CameraScreenState extends State<CameraScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Selected images grid - show at top if images exist
-            if (_selectedImages.isNotEmpty) ...[
-              Text(
-                'Ảnh đã chọn (${_selectedImages.length})',
-                style: GoogleFonts.afacad(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+            // Info box - moved to top
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED).withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.orange.withValues(alpha: 0.3),
                 ),
               ),
-              const SizedBox(height: 12),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: _selectedImages.length,
-                itemBuilder: (context, index) {
-                  return Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: Image.file(
-                          _selectedImages[index],
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: GestureDetector(
-                          onTap: () => _removeImage(index),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tính năng:',
+                    style: GoogleFonts.afacad(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '✓ Chọn nhiều ảnh cùng lúc\n✓ Nhận diện 100+ loài động vật\n✓ Xác định giống loài chính xác\n✓ Hiển thị độ tin cậy của AI\n\nMẹo:\n• Ảnh sáng và rõ nét\n• Động vật chiếm 50%+ ảnh\n• Tránh ảnh mờ hoặc bị che khuất',
+                    style: GoogleFonts.afacad(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                      height: 1.8,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
+            const SizedBox(height: 20),
 
             // Image selection buttons
             Row(
@@ -375,6 +352,64 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
             const SizedBox(height: 20),
 
+            // Selected images grid
+            if (_selectedImages.isNotEmpty) ...[
+              Text(
+                'Ảnh đã chọn (${_selectedImages.length})',
+                style: GoogleFonts.afacad(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: _selectedImages.length,
+                itemBuilder: (context, index) {
+                  return Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Image.file(
+                          _selectedImages[index],
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => _removeImage(index),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+
             // Detect button
             SizedBox(
               width: double.infinity,
@@ -407,41 +442,6 @@ class _CameraScreenState extends State<CameraScreen> {
                           color: Colors.white,
                         ),
                       ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Info box
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF7ED).withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.orange.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tính năng:',
-                    style: GoogleFonts.afacad(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '✓ Chọn nhiều ảnh cùng lúc\n✓ Nhận diện 100+ loài động vật\n✓ Xác định giống loài chính xác\n✓ Hiển thị độ tin cậy của AI\n\nMẹo:\n• Ảnh sáng và rõ nét\n• Động vật chiếm 50%+ ảnh\n• Tránh ảnh mờ hoặc bị che khuất',
-                    style: GoogleFonts.afacad(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                      height: 1.8,
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
