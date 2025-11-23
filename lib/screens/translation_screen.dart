@@ -119,50 +119,248 @@ class _TranslationScreenState extends State<TranslationScreen> {
   Future<void> _analyzeAndTranslateSound() async {
     // Simulate AI analysis by detecting pet type and emotion
     final petType = _selectedPet == 0 ? 'Chó' : 'Mèo';
-    final emotionRandom = DateTime.now().millisecondsSinceEpoch % 3;
-    final isHappy = emotionRandom == 0;
-    final isSad = emotionRandom == 1;
+    final emotionRandom = DateTime.now().millisecondsSinceEpoch % (_selectedPet == 0 ? 22 : 23);
 
-    String detectedEmotion = 'Vui vẻ';
-    String translation = '';
-    String meaning = '';
+    // Dog emotions and sounds (22 cases)
+    final dogBehaviors = [
+      {
+        'emotion': 'Vui vẻ - Muốn chơi',
+        'translation': 'Gâu gâu! Gâu gâu gâu!',
+        'meaning': '$petType đang rất vui vẻ, muốn chơi cùng bạn ngay'
+      },
+      {
+        'emotion': 'Buồn - Cô đơn',
+        'translation': 'Ương ương... ương...',
+        'meaning': '$petType đang buồn hoặc cô đơn, cần sự chú ý của bạn'
+      },
+      {
+        'emotion': 'Cảnh báo - Bảo vệ',
+        'translation': 'Sủa sủa! Sủa!',
+        'meaning': '$petType đang cảnh báo hoặc muốn bảo vệ khu vực của mình'
+      },
+      {
+        'emotion': 'Đói - Muốn ăn',
+        'translation': 'Gâu! Gâu! Gâu gâu!',
+        'meaning': '$petType đang đói, muốn bạn cho ăn ngay'
+      },
+      {
+        'emotion': 'Cần vào nhà',
+        'translation': 'Gâu gâu ương ương...',
+        'meaning': '$petType cần vào nhà, muốn dùng phòng tắm hoặc uống nước'
+      },
+      {
+        'emotion': 'Hứng thú - Phấn khích',
+        'translation': 'Gâu gâu! Woof woof!',
+        'meaning': '$petType rất hứng thú, có thể thấy thứ gì đó mới hay tuyệt vời'
+      },
+      {
+        'emotion': 'Chào hỏi - Vui mừng gặp bạn',
+        'translation': 'Woof woof! Gâu gâu!',
+        'meaning': '$petType vui mừng gặp lại bạn sau khi vắng nhà'
+      },
+      {
+        'emotion': 'Đau đớn - Cần trợ giúp',
+        'translation': 'Ương ương ương ương...',
+        'meaning': '$petType đang cảm thấy đau hoặc không thoải mái, cần bạn chăm sóc'
+      },
+      {
+        'emotion': 'Ghen tị - Khó chịu',
+        'translation': 'Gâu sủa sủa...',
+        'meaning': '$petType cảm thấy ghen tị hoặc khó chịu với ai đó'
+      },
+      {
+        'emotion': 'Xin phép - Được không?',
+        'translation': 'Gâu... gâu gâu?',
+        'meaning': '$petType đang xin phép, muốn biết liệu nó có được phép làm gì đó không'
+      },
+      {
+        'emotion': 'Tức giận - Bực bội',
+        'translation': 'Sủa sủa sủa! Sủa!',
+        'meaning': '$petType rất bực bội hoặc tức giận về cái gì đó'
+      },
+      {
+        'emotion': 'Hạnh phúc - Yên tĩnh',
+        'translation': 'Ụ ụ ụ... (gâu nhẹ)',
+        'meaning': '$petType rất hạnh phúc, đang thư giãn và cảm thấy an toàn'
+      },
+      {
+        'emotion': 'Tò mò - Tìm hiểu',
+        'translation': 'Gâu? Gâu gâu?',
+        'meaning': '$petType tò mò và đang tìm hiểu về cái gì đó mới'
+      },
+      {
+        'emotion': 'Xin lỗi - Ăn năn',
+        'translation': 'Ương ương... gâu gâu...',
+        'meaning': '$petType xin lỗi về cái gì đó nó đã làm sai'
+      },
+      {
+        'emotion': 'Ngủ gật - Buồn ngủ',
+        'translation': 'Ụ... ụụ... (sủa yếu)',
+        'meaning': '$petType đang buồn ngủ hoặc mệt mỏi'
+      },
+      {
+        'emotion': 'Hứa hẹn - Đồng ý',
+        'translation': 'Gâu! (nhanh gọn)',
+        'meaning': '$petType đồng ý hoặc hứa sẽ làm theo lệnh'
+      },
+      {
+        'emotion': 'Ghét - Sợ hãi',
+        'translation': 'Sủa sủa! Sủa sủa sủa!',
+        'meaning': '$petType sợ hãi hoặc ghét cái gì đó, muốn xa tránh'
+      },
+      {
+        'emotion': 'Cáu gắt - Bực dọc',
+        'translation': 'Gâu gâu gâu gâu!',
+        'meaning': '$petType cáu gắt, bực dọc vì bị làm phiền'
+      },
+      {
+        'emotion': 'Kích thích - Háo hức',
+        'translation': 'Woof! Woof woof!',
+        'meaning': '$petType rất kích thích, có thể đó là lúc đi chơi hoặc ăn uống'
+      },
+      {
+        'emotion': 'Tuyệt vọng - Khẩn cấp',
+        'translation': 'Gâu gâu gâu gâu gâu!',
+        'meaning': '$petType rất khẩn cấp, có thể xảy ra chuyện gì đó quan trọng'
+      },
+      {
+        'emotion': 'Thư thái - Thoải mái',
+        'translation': 'Ụ... ụụ (gâu dài)',
+        'meaning': '$petType đang rất thoải mái và thư thái'
+      },
+      {
+        'emotion': 'Trò chuyện - Kể chuyện',
+        'translation': 'Gâu ụ gâu gâu ụ ụ',
+        'meaning': '$petType như đang kể chuyện hoặc trò chuyện với bạn'
+      },
+    ];
 
-    if (_selectedPet == 0) {
-      // Dog
-      if (isHappy) {
-        detectedEmotion = 'Vui vẻ';
-        translation = 'Gâu gâu! Gâu gâu gâu!';
-        meaning = '$petType đang rất vui vẻ, muốn chơi cùng bạn';
-      } else if (isSad) {
-        detectedEmotion = 'Buồn';
-        translation = 'Ương ương... ương...';
-        meaning = '$petType đang buồn hoặc cô đơn, cần sự chú ý của bạn';
-      } else {
-        detectedEmotion = 'Cảnh báo';
-        translation = 'Sủa sủa! Sủa!';
-        meaning = '$petType đang cảnh báo hoặc muốn bảo vệ khu vực của mình';
-      }
-    } else {
-      // Cat
-      if (isHappy) {
-        detectedEmotion = 'Làm nũng';
-        translation = 'Meo meo! Meo meo...';
-        meaning = '$petType đang làm nũng, muốn bạn vuốt ve hoặc chơi cùng';
-      } else if (isSad) {
-        detectedEmotion = 'Tìm mẹ';
-        translation = 'Meo... meo... meow!';
-        meaning = '$petType đang tìm kiếm bạn, cảm thấy cô đơn';
-      } else {
-        detectedEmotion = 'Tức giận';
-        translation = 'Ffff... hissss! Pfft!';
-        meaning = '$petType đang tức giận hoặc cảm thấy bị đe dọa';
-      }
-    }
+    // Cat emotions and sounds (23 cases)
+    final catBehaviors = [
+      {
+        'emotion': 'Làm nũng - Yêu quý',
+        'translation': 'Meo meo! Meo meo...',
+        'meaning': '$petType đang làm nũng, muốn bạn vuốt ve hoặc chơi cùng'
+      },
+      {
+        'emotion': 'Tìm mẹ - Tìm bạn',
+        'translation': 'Meo... meo... meow!',
+        'meaning': '$petType đang tìm kiếm bạn, cảm thấy cô đơn'
+      },
+      {
+        'emotion': 'Tức giận - Cảnh báo',
+        'translation': 'Ffff... hissss! Pfft!',
+        'meaning': '$petType đang tức giận hoặc cảm thấy bị đe dọa'
+      },
+      {
+        'emotion': 'Đói - Muốn ăn',
+        'translation': 'Meo meo meo meo!',
+        'meaning': '$petType đang đói, muốn bạn cho ăn ngay'
+      },
+      {
+        'emotion': 'Ghe lạnh - Muốn ấm',
+        'translation': 'Meo... meo meo...',
+        'meaning': '$petType cảm thấy lạnh, muốn tìm nơi ấm áp'
+      },
+      {
+        'emotion': 'Xin vào nhà',
+        'translation': 'Meow meow! Meo meo!',
+        'meaning': '$petType muốn vào nhà để dùng phòng tắm hoặc uống nước'
+      },
+      {
+        'emotion': 'Phấn khích - Hứng thú',
+        'translation': 'Mrrrow! Meo meo meo!',
+        'meaning': '$petType rất hứng thú, có thể thấy chim hoặc thứ gì đó mới'
+      },
+      {
+        'emotion': 'Hạnh phúc - Yên tĩnh',
+        'translation': 'Rrr rrr... (gâm gâm)',
+        'meaning': '$petType rất hạnh phúc, đang thư giãn và cảm thấy an toàn'
+      },
+      {
+        'emotion': 'Xin lỗi - Ăn năn',
+        'translation': 'Meo meo... (nhỏ nhẹ)',
+        'meaning': '$petType xin lỗi về cái gì đó nó đã làm sai'
+      },
+      {
+        'emotion': 'Tò mò - Tìm hiểu',
+        'translation': 'Meo? Meo meo?',
+        'meaning': '$petType tò mò và đang tìm hiểu về cái gì đó mới'
+      },
+      {
+        'emotion': 'Bực dọc - Chán nản',
+        'translation': 'Meo... (ngắn gọn)',
+        'meaning': '$petType bực dọc hoặc chán nản về cái gì đó'
+      },
+      {
+        'emotion': 'Buồn ngủ - Mệt mỏi',
+        'translation': 'Meo... rrr... (yếu)',
+        'meaning': '$petType đang buồn ngủ hoặc mệt mỏi'
+      },
+      {
+        'emotion': 'Ghen tị - Khó chịu',
+        'translation': 'Meo meo sủa sủa...',
+        'meaning': '$petType cảm thấy ghen tị hoặc khó chịu với ai đó'
+      },
+      {
+        'emotion': 'Chào hỏi - Vui mừng',
+        'translation': 'Meow! Meo meo!',
+        'meaning': '$petType vui mừng gặp lại bạn sau khi vắng nhà'
+      },
+      {
+        'emotion': 'Nhu cầu cấp tính',
+        'translation': 'Meow meow meow!',
+        'meaning': '$petType cần gì đó ngay lập tức, khẩn cấp'
+      },
+      {
+        'emotion': 'Sợ hãi - Lo lắng',
+        'translation': 'Meo... meo... (nhỏ)',
+        'meaning': '$petType sợ hãi hoặc lo lắng về điều gì đó'
+      },
+      {
+        'emotion': 'Chương trình gây rối',
+        'translation': 'Mrrrow mrrrow mrrrow!',
+        'meaning': '$petType có năng lượng cao, muốn chơi đồn độc'
+      },
+      {
+        'emotion': 'Khao khát - Thèm muốn',
+        'translation': 'Meow... meow meow...',
+        'meaning': '$petType khao khát gì đó, thèm muốn bị chú ý'
+      },
+      {
+        'emotion': 'Cảnh báo lạnh',
+        'translation': 'Ffff... (hiss)',
+        'meaning': '$petType cảnh báo, không muốn ai tiếp cận'
+      },
+      {
+        'emotion': 'Khoái trí - Hợp tác',
+        'translation': 'Meo meo! Purr purr...',
+        'meaning': '$petType rất khoái trí, sẵn sàng hợp tác'
+      },
+      {
+        'emotion': 'Đau đớn - Bệnh tật',
+        'translation': 'Meo... (rất yếu)',
+        'meaning': '$petType đang cảm thấy đau hoặc không thoải mái, cần trợ giúp'
+      },
+      {
+        'emotion': 'Mỏi - Gỡ rồi',
+        'translation': 'Meo... (dài)',
+        'meaning': '$petType mỏi từ chơi, muốn nghỉ ngơi'
+      },
+      {
+        'emotion': 'Trò chuyện - Kể chuyện',
+        'translation': 'Meo meo meo meo meo!',
+        'meaning': '$petType như đang kể chuyện hoặc trò chuyện với bạn'
+      },
+    ];
+
+    final behaviors = _selectedPet == 0 ? dogBehaviors : catBehaviors;
+    final behavior = behaviors[emotionRandom];
 
     if (mounted) {
       setState(() {
-        _recordedText = 'Ghi âm hoàn tất! ($detectedEmotion)';
-        _translatedText = '$translation\n\n📝 Ý nghĩa: $meaning';
+        _recordedText = 'Ghi âm hoàn tất! (${behavior['emotion']})';
+        _translatedText = '${behavior['translation']}\n\n📝 Ý nghĩa: ${behavior['meaning']}';
       });
     }
   }
