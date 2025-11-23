@@ -204,7 +204,7 @@ class LostPetService {
           .snapshots()
           .map((snapshot) {
         final lostPets = snapshot.docs
-            .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+            .map((doc) => {...doc.data(), 'id': doc.id})
             .toList();
 
         // Lọc theo khoảng cách

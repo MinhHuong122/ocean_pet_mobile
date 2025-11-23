@@ -172,14 +172,34 @@ class _CareScreenState extends State<CareScreen> {
                     ),
                   )
                 else
-                  ...appointments.map((appointment) => GestureDetector(
-                        onTap: () => _openAppointmentDetail(appointment),
-                        child: _buildAppointmentCard(
-                          appointment['title'],
-                          '${appointment['date']} - ${appointment['time']}',
-                          appointment['location'],
-                          appointment['icon'],
-                          appointment['color'],
+                  ...appointments.map((appointment) => Dismissible(
+                        key: ValueKey(appointment['id']),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.red[600],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        onDismissed: (direction) async {
+                          _deleteAppointment(appointment);
+                        },
+                        child: GestureDetector(
+                          onTap: () => _openAppointmentDetail(appointment),
+                          child: _buildAppointmentCard(
+                            appointment['title'],
+                            '${appointment['date']} - ${appointment['time']}',
+                            appointment['location'],
+                            appointment['icon'],
+                            appointment['color'],
+                          ),
                         ),
                       )),
 
@@ -671,6 +691,45 @@ class _CareScreenState extends State<CareScreen> {
           SnackBar(
             content: Text('Lỗi: $e', style: GoogleFonts.afacad()),
             backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Delete appointment
+  Future<void> _deleteAppointment(Map<String, dynamic> appointment) async {
+    try {
+      print('🗑️ [CareScreen] Deleting appointment: ${appointment['id']}');
+      
+      // Delete from Firebase
+      await AppointmentService.deleteAppointment(appointment['id']);
+      
+      // Remove from local list
+      setState(() {
+        appointments.removeWhere((apt) => apt['id'] == appointment['id']);
+      });
+      
+      print('✅ [CareScreen] Appointment deleted successfully');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Đã xóa lịch hẹn',
+                style: GoogleFonts.afacad()),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ [CareScreen] Error deleting appointment: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Lỗi: $e', style: GoogleFonts.afacad()),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
           ),
         );
       }

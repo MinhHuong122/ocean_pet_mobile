@@ -173,7 +173,7 @@ class AppointmentService {
           .orderBy('appointment_date')
           .snapshots()
           .map((snapshot) => snapshot.docs
-              .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+              .map((doc) => {...doc.data(), 'id': doc.id})
               .toList());
     } catch (e) {
       print('Error watching appointments: $e');
