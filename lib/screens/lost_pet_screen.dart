@@ -147,15 +147,22 @@ class _LostPetScreenState extends State<LostPetScreen> {
   void _showPostForm({Map<String, dynamic>? editingPost}) {
     final isEditing = editingPost != null;
     final formKey = GlobalKey<FormState>();
-    late String name, type, location, description, phone;
-
-    if (isEditing) {
-      name = editingPost['name'];
-      type = editingPost['type'];
-      location = editingPost['location'];
-      description = editingPost['description'];
-      phone = editingPost['phone'];
-    }
+    
+    // Use TextEditingControllers instead of late variables
+    final nameController = TextEditingController(
+      text: isEditing ? editingPost['name'] : '',
+    );
+    final locationController = TextEditingController(
+      text: isEditing ? editingPost['location'] : '',
+    );
+    final descriptionController = TextEditingController(
+      text: isEditing ? editingPost['description'] : '',
+    );
+    final phoneController = TextEditingController(
+      text: isEditing ? editingPost['phone'] : '',
+    );
+    
+    String selectedType = isEditing ? editingPost['type'] : 'Chó';
 
     showModalBottomSheet(
       context: context,
@@ -169,210 +176,220 @@ class _LostPetScreenState extends State<LostPetScreen> {
         minChildSize: 0.8,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, scrollController) => Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              controller: scrollController,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    isEditing ? 'Chỉnh sửa tin' : 'Đăng tin thất lạc',
-                    style: GoogleFonts.afacad(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Pet name
-                  TextFormField(
-                    initialValue: isEditing ? editingPost['name'] : null,
-                    decoration: InputDecoration(
-                      labelText: 'Tên thú cưng',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixIcon: const Icon(Icons.pets),
-                    ),
-                    validator: (v) =>
-                        v?.isEmpty ?? true ? 'Nhập tên thú cưng' : null,
-                    onSaved: (v) => name = v ?? '',
-                  ),
-                  const SizedBox(height: 12),
-                  // Pet type
-                  DropdownButtonFormField<String>(
-                    value: isEditing ? editingPost['type'] : null,
-                    decoration: InputDecoration(
-                      labelText: 'Loại thú cưng',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixIcon: const Icon(Icons.category),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'Chó', child: Text('Chó')),
-                      DropdownMenuItem(value: 'Mèo', child: Text('Mèo')),
-                      DropdownMenuItem(value: 'Khác', child: Text('Khác')),
-                    ],
-                    onChanged: (v) => type = v ?? '',
-                    validator: (v) =>
-                        v?.isEmpty ?? true ? 'Chọn loại thú cưng' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  // Location
-                  TextFormField(
-                    initialValue: isEditing ? editingPost['location'] : null,
-                    decoration: InputDecoration(
-                      labelText: 'Khu vực mất tích',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixIcon: const Icon(Icons.location_on),
-                    ),
-                    validator: (v) =>
-                        v?.isEmpty ?? true ? 'Nhập khu vực mất tích' : null,
-                    onSaved: (v) => location = v ?? '',
-                  ),
-                  const SizedBox(height: 12),
-                  // Description
-                  TextFormField(
-                    initialValue:
-                        isEditing ? editingPost['description'] : null,
-                    decoration: InputDecoration(
-                      labelText: 'Mô tả chi tiết',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixIcon: const Icon(Icons.description),
-                    ),
-                    maxLines: 3,
-                    validator: (v) =>
-                        v?.isEmpty ?? true ? 'Nhập mô tả chi tiết' : null,
-                    onSaved: (v) => description = v ?? '',
-                  ),
-                  const SizedBox(height: 12),
-                  // Phone
-                  TextFormField(
-                    initialValue: isEditing ? editingPost['phone'] : null,
-                    decoration: InputDecoration(
-                      labelText: 'Số điện thoại',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      prefixIcon: const Icon(Icons.phone),
-                    ),
-                    validator: (v) =>
-                        v?.isEmpty ?? true ? 'Nhập số điện thoại' : null,
-                    onSaved: (v) => phone = v ?? '',
-                  ),
-                  const SizedBox(height: 20),
-                  // Submit button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (formKey.currentState!.validate()) {
-                          formKey.currentState!.save();
-                          
-                          if (widget.useFirebase) {
-                            try {
-                              if (isEditing) {
-                                // Update in Firebase
-                                await LostPetService.updateLostPetPost(
-                                  editingPost['id'],
-                                  {
-                                    'pet_name': name,
-                                    'pet_type': type,
-                                    'lost_location': location,
-                                    'distinguishing_features': description,
-                                    'phone_number': phone,
-                                  },
-                                );
-                              } else {
-                                // Create new post in Firebase
-                                await LostPetService.createLostPetPost(
-                                  petName: name,
-                                  petType: type,
-                                  breed: 'Unknown',
-                                  color: 'Unknown',
-                                  distinguishingFeatures: description,
-                                  imageUrl: '',
-                                  lostDate: DateTime.now(),
-                                  lostLocation: location,
-                                  latitude: 10.7769,
-                                  longitude: 106.6955,
-                                  phoneNumber: phone,
-                                );
-                              }
-                              if (mounted) {
-                                Navigator.pop(context);
-                                await _loadFirebaseData();
-                                _showSnackBar(isEditing ? 'Cập nhật thành công' : 'Đăng tin thành công');
-                              }
-                            } catch (e) {
-                              _showSnackBar('Lỗi: $e');
-                            }
-                          } else {
-                            // Legacy mode - update local list
-                            if (isEditing) {
-                              editingPost['name'] = name;
-                              editingPost['type'] = type;
-                              editingPost['location'] = location;
-                              editingPost['description'] = description;
-                              editingPost['phone'] = phone;
-                            } else {
-                              _lostPets.add({
-                                'id': DateTime.now().toString(),
-                                'name': name,
-                                'type': type,
-                                'location': location,
-                                'description': description,
-                                'phone': phone,
-                                'date': DateTime.now().toString(),
-                                'image': type == 'Chó' ? '🐕' : '🐱',
-                                'userId': 'current_user',
-                                'lat': 10.7769,
-                                'lng': 106.6955,
-                              });
-                            }
-                            setState(() {});
-                            Navigator.pop(context);
-                            _showSnackBar(isEditing ? 'Cập nhật thành công' : 'Đăng tin thành công');
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF8B5CF6),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text(
-                        isEditing ? 'Cập nhật' : 'Đăng tin',
-                        style: GoogleFonts.afacad(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+        builder: (context, scrollController) => StatefulBuilder(
+          builder: (context, setState) => Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(
+                      isEditing ? 'Chỉnh sửa tin' : 'Đăng tin thất lạc',
+                      style: GoogleFonts.afacad(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Pet name
+                    TextFormField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Tên thú cưng',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.pets),
+                      ),
+                      validator: (v) =>
+                          v?.isEmpty ?? true ? 'Nhập tên thú cưng' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    // Pet type
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: InputDecoration(
+                        labelText: 'Loại thú cưng',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.category),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'Chó', child: Text('Chó')),
+                        DropdownMenuItem(value: 'Mèo', child: Text('Mèo')),
+                        DropdownMenuItem(value: 'Khác', child: Text('Khác')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() => selectedType = v);
+                        }
+                      },
+                      validator: (v) =>
+                          v?.isEmpty ?? true ? 'Chọn loại thú cưng' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    // Location
+                    TextFormField(
+                      controller: locationController,
+                      decoration: InputDecoration(
+                        labelText: 'Khu vực mất tích',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.location_on),
+                      ),
+                      validator: (v) =>
+                          v?.isEmpty ?? true ? 'Nhập khu vực mất tích' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    // Description
+                    TextFormField(
+                      controller: descriptionController,
+                      decoration: InputDecoration(
+                        labelText: 'Mô tả chi tiết',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.description),
+                      ),
+                      maxLines: 3,
+                      validator: (v) =>
+                          v?.isEmpty ?? true ? 'Nhập mô tả chi tiết' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    // Phone
+                    TextFormField(
+                      controller: phoneController,
+                      decoration: InputDecoration(
+                        labelText: 'Số điện thoại',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.phone),
+                      ),
+                      validator: (v) =>
+                          v?.isEmpty ?? true ? 'Nhập số điện thoại' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    // Submit button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (formKey.currentState!.validate()) {
+                            final name = nameController.text.trim();
+                            final type = selectedType;
+                            final location = locationController.text.trim();
+                            final description = descriptionController.text.trim();
+                            final phone = phoneController.text.trim();
+                            
+                            if (widget.useFirebase) {
+                              try {
+                                if (isEditing) {
+                                  // Update in Firebase
+                                  print('📝 [LostPetScreen] Updating lost pet post: ${editingPost['id']}');
+                                  await LostPetService.updateLostPetPost(
+                                    editingPost['id'],
+                                    {
+                                      'pet_name': name,
+                                      'pet_type': type,
+                                      'lost_location': location,
+                                      'distinguishing_features': description,
+                                      'phone_number': phone,
+                                    },
+                                  );
+                                  print('✅ [LostPetScreen] Lost pet post updated successfully');
+                                } else {
+                                  // Create new post in Firebase
+                                  print('📝 [LostPetScreen] Creating new lost pet post');
+                                  final postId = await LostPetService.createLostPetPost(
+                                    petName: name,
+                                    petType: type,
+                                    breed: 'Unknown',
+                                    color: 'Unknown',
+                                    distinguishingFeatures: description,
+                                    imageUrl: '',
+                                    lostDate: DateTime.now(),
+                                    lostLocation: location,
+                                    latitude: 10.7769,
+                                    longitude: 106.6955,
+                                    phoneNumber: phone,
+                                  );
+                                  print('✅ [LostPetScreen] Lost pet post created: $postId');
+                                }
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  await _loadFirebaseData();
+                                  _showSnackBar(isEditing ? '✅ Cập nhật thành công' : '✅ Đăng tin thành công');
+                                }
+                              } catch (e) {
+                                print('❌ [LostPetScreen] Error: $e');
+                                _showSnackBar('❌ Lỗi: $e');
+                              }
+                            } else {
+                              // Legacy mode - update local list
+                              if (isEditing) {
+                                editingPost['name'] = name;
+                                editingPost['type'] = type;
+                                editingPost['location'] = location;
+                                editingPost['description'] = description;
+                                editingPost['phone'] = phone;
+                              } else {
+                                _lostPets.add({
+                                  'id': DateTime.now().toString(),
+                                  'name': name,
+                                  'type': type,
+                                  'location': location,
+                                  'description': description,
+                                  'phone': phone,
+                                  'date': DateTime.now().toString(),
+                                  'image': type == 'Chó' ? '🐕' : '🐱',
+                                  'userId': 'current_user',
+                                  'lat': 10.7769,
+                                  'lng': 106.6955,
+                                });
+                              }
+                              setState(() {});
+                              Navigator.pop(context);
+                              _showSnackBar(isEditing ? '✅ Cập nhật thành công' : '✅ Đăng tin thành công');
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B5CF6),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(
+                          isEditing ? 'Cập nhật' : 'Đăng tin',
+                          style: GoogleFonts.afacad(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
