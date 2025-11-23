@@ -894,7 +894,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                     itemCount: _displayedPets.length,
                     itemBuilder: (context, index) {
                       final pet = _displayedPets[index];
-                      final isMyPost = pet['userId'] == 'current_user';
+                      final isMyPost = pet['userId'] == _currentUserId;
 
                       return GestureDetector(
                         onTap: () => _showPetDetail(pet),
@@ -981,11 +981,17 @@ class _LostPetScreenState extends State<LostPetScreen> {
                                             SizedBox(
                                               height: 28,
                                               child: ElevatedButton.icon(
-                                                onPressed: () {
-                                                  setState(() =>
-                                                      _lostPets.remove(pet));
-                                                  _showSnackBar(
-                                                      'Đã xóa tin');
+                                                onPressed: () async {
+                                                  try {
+                                                    print('🗑️ [LostPetScreen] Deleting lost pet post: ${pet['id']}');
+                                                    await LostPetService.deleteLostPetPost(pet['id']);
+                                                    print('✅ [LostPetScreen] Lost pet post deleted successfully');
+                                                    await _loadFirebaseData();
+                                                    _showSnackBar('✅ Đã xóa tin');
+                                                  } catch (e) {
+                                                    print('❌ [LostPetScreen] Error deleting post: $e');
+                                                    _showSnackBar('❌ Lỗi xóa tin: $e');
+                                                  }
                                                 },
                                                 icon: const Icon(Icons.delete,
                                                     size: 14),
