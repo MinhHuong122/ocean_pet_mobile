@@ -260,7 +260,7 @@ class _CameraScreenState extends State<CameraScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         title: Text(
-          'Nhận diện động vật',
+          'Nhận diện',
           style: GoogleFonts.afacad(
             fontSize: 24,
             fontWeight: FontWeight.bold,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import '../helpers/youtube_utils.dart';
 
 class YoutubePlayerScreen extends StatefulWidget {
   final String videoUrl;
@@ -32,8 +33,12 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
 
   void _initializePlayer() {
     try {
-      final videoId = YoutubePlayer.convertUrlToId(widget.videoUrl);
-      if (videoId != null) {
+      // Thử lấy ID từ URL trực tiếp, hoặc từ regex
+      final videoId = widget.videoUrl.length == 11 
+          ? widget.videoUrl 
+          : extractYoutubeId(widget.videoUrl);
+      
+      if (videoId != null && videoId.isNotEmpty) {
         _controller = YoutubePlayerController(
           initialVideoId: videoId,
           flags: const YoutubePlayerFlags(

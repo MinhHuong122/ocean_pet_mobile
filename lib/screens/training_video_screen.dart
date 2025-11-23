@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import './youtube_player_screen.dart';
+import '../helpers/youtube_utils.dart';
 
 class TrainingVideoScreen extends StatefulWidget {
   const TrainingVideoScreen({super.key});
@@ -465,25 +466,75 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
             children: [
               Row(
                 children: [
-                  // Thumbnail
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFAB47BC), Color(0xFF8E24AA)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  // Thumbnail - YouTube Real Image
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        Icon(
-                          video['thumbnail'],
-                          color: Colors.white,
-                          size: 48,
+                        Image.network(
+                          getYoutubeThumbnail(
+                            extractYoutubeId(video['url']) ?? '',
+                            quality: 'maxresdefault',
+                          ),
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFAB47BC), Color(0xFF8E24AA)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.play_circle,
+                                color: Colors.white,
+                                size: 48,
+                              ),
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 30,
+                                  height: 30,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF8E97FD),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        Positioned.fill(
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow,
+                                color: Color(0xFF8E97FD),
+                                size: 24,
+                              ),
+                            ),
+                          ),
                         ),
                         Positioned(
                           bottom: 8,

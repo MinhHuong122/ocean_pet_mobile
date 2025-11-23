@@ -433,7 +433,7 @@ class _TranslationScreenState extends State<TranslationScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         title: Text(
-          'Phiên dịch Thú Cưng',
+          'Phiên dịch',
           style: GoogleFonts.afacad(
             fontSize: 24,
             fontWeight: FontWeight.bold,
