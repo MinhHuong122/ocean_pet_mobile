@@ -5,7 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'dart:io';
+import 'dart:convert';
 import '../services/LostPetService.dart';
 import '../services/CloudinaryService.dart';
 
@@ -96,8 +99,20 @@ class _LostPetScreenState extends State<LostPetScreen> {
             emoji = '🐕';
           } else if (petType.contains('cat') || petType.contains('mèo')) {
             emoji = '🐱';
-          } else if (petType.contains('bird') || petType.contains('chim')) {
+          } else if (petType.contains('bird') || petType.contains('chim') || petType.contains('vẹt')) {
             emoji = '🐦';
+          } else if (petType.contains('fish') || petType.contains('cá')) {
+            emoji = '🐠';
+          } else if (petType.contains('snake') || petType.contains('rắn')) {
+            emoji = '🐍';
+          } else if (petType.contains('turtle') || petType.contains('rùa')) {
+            emoji = '🐢';
+          } else if (petType.contains('pig') || petType.contains('heo')) {
+            emoji = '🐷';
+          } else if (petType.contains('rabbit') || petType.contains('thỏ')) {
+            emoji = '🐰';
+          } else if (petType.contains('hamster')) {
+            emoji = '🐹';
           }
 
           final mappedPet = {
@@ -146,6 +161,114 @@ class _LostPetScreenState extends State<LostPetScreen> {
     return _selectedTab == 0 ? _lostPets : _myPosts;
   }
 
+  Future<void> _searchLocationGeoapify(String query, Function(List<Map<String, dynamic>>) onResults) async {
+    if (query.isEmpty) return;
+
+    try {
+      const geoapifyApiKey = '7c0100b7e4614f859ec61a564091807b';
+      final url = Uri.parse(
+        'https://api.geoapify.com/v1/geocode/search?text=${Uri.encodeComponent(query)}&apiKey=$geoapifyApiKey'
+      );
+
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout: Không thể kết nối server');
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['features'] != null && data['features'].isNotEmpty) {
+          final results = (data['features'] as List).map((f) {
+            final p = f['properties'];
+            return {
+              'lat': p['lat'] ?? 10.762622,
+              'lon': p['lon'] ?? 106.660172,
+              'formatted': p['formatted'] ?? '',
+              'name': p['name'] ?? '',
+              'city': p['city'] ?? '',
+            };
+          }).toList();
+          onResults(results);
+        } else {
+          _showSnackBar('Không tìm thấy địa điểm');
+          onResults([]);
+        }
+      } else {
+        throw Exception('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error search: $e');
+      _showSnackBar('Lỗi tìm kiếm: ${e.toString()}');
+      onResults([]);
+    }
+  }
+
+  Future<void> _getCurrentLocationGPS(Function(double, double) onLocation) async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showSnackBar('Bạn cần cấp quyền truy cập vị trí');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showSnackBar('Vui lòng bật quyền vị trí trong Cài đặt');
+        await Geolocator.openLocationSettings();
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 5),
+      ).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw Exception('GPS timeout');
+        },
+      );
+
+      onLocation(position.latitude, position.longitude);
+    } catch (e) {
+      print('Location Error: $e');
+      _showSnackBar('Không thể lấy vị trí.');
+    }
+  }
+
+  Future<void> _reverseGeocodeLocation(double lat, double lon, Function(String) onAddress) async {
+    try {
+      const geoapifyApiKey = '7c0100b7e4614f859ec61a564091807b';
+      final url = Uri.parse(
+        'https://api.geoapify.com/v1/geocode/reverse?lat=$lat&lon=$lon&apiKey=$geoapifyApiKey'
+      );
+
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout');
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['features'] != null && data['features'].isNotEmpty) {
+          final props = data['features'][0]['properties'];
+          final address = props['formatted'] ?? '${props['street'] ?? ''}, ${props['city'] ?? ''}';
+          onAddress(address);
+        }
+      }
+    } catch (e) {
+      print('Error reverse: $e');
+      _showSnackBar('Không xác định được địa chỉ');
+    }
+  }
+
   void _showPostForm({Map<String, dynamic>? editingPost}) {
     final isEditing = editingPost != null;
     final formKey = GlobalKey<FormState>();
@@ -180,20 +303,26 @@ class _LostPetScreenState extends State<LostPetScreen> {
         maxChildSize: 0.95,
         expand: false,
         builder: (context, scrollController) => StatefulBuilder(
-          builder: (context, setState) => Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            ),
-            child: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                controller: scrollController,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          builder: (context, setState) {
+            // Location picker state variables
+            double selectedLat = isEditing ? (editingPost['lat'] ?? 10.7769) : 10.7769;
+            double selectedLon = isEditing ? (editingPost['lng'] ?? 106.6955) : 106.6955;
+            List<Map<String, dynamic>> searchResults = [];
+            
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     Center(
                       child: Container(
                         width: 40,
@@ -291,6 +420,13 @@ class _LostPetScreenState extends State<LostPetScreen> {
                       items: const [
                         DropdownMenuItem(value: 'Chó', child: Text('Chó')),
                         DropdownMenuItem(value: 'Mèo', child: Text('Mèo')),
+                        DropdownMenuItem(value: 'Cá', child: Text('Cá')),
+                        DropdownMenuItem(value: 'Rắn', child: Text('Rắn')),
+                        DropdownMenuItem(value: 'Rùa', child: Text('Rùa')),
+                        DropdownMenuItem(value: 'Heo', child: Text('Heo')),
+                        DropdownMenuItem(value: 'Thỏ', child: Text('Thỏ')),
+                        DropdownMenuItem(value: 'Vẹt', child: Text('Vẹt')),
+                        DropdownMenuItem(value: 'Hamster', child: Text('Hamster')),
                         DropdownMenuItem(value: 'Khác', child: Text('Khác')),
                       ],
                       onChanged: (v) {
@@ -302,19 +438,121 @@ class _LostPetScreenState extends State<LostPetScreen> {
                           v?.isEmpty ?? true ? 'Chọn loại thú cưng' : null,
                     ),
                     const SizedBox(height: 12),
-                    // Location
-                    TextFormField(
-                      controller: locationController,
-                      decoration: InputDecoration(
-                        labelText: 'Khu vực mất tích',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    // Location Picker with search and GPS
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F6F6),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF8B5CF6).withOpacity(0.3),
                         ),
-                        prefixIcon: const Icon(Icons.location_on),
                       ),
-                      validator: (v) =>
-                          v?.isEmpty ?? true ? 'Nhập khu vực mất tích' : null,
+                      child: TextField(
+                        controller: locationController,
+                        style: GoogleFonts.afacad(fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: 'Tìm kiếm khu vực mất tích...',
+                          hintStyle: GoogleFonts.afacad(color: Colors.grey[400]),
+                          prefixIcon: const Icon(Icons.location_on, color: Color(0xFF8B5CF6)),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (locationController.text.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(Icons.clear, color: Colors.grey),
+                                  onPressed: () {
+                                    locationController.clear();
+                                  },
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.my_location, color: Color(0xFF8B5CF6)),
+                                onPressed: () => _getCurrentLocationGPS((lat, lon) {
+                                  setState(() {
+                                    selectedLat = lat;
+                                    selectedLon = lon;
+                                  });
+                                  _reverseGeocodeLocation(lat, lon, (address) {
+                                    locationController.text = address;
+                                  });
+                                }),
+                              ),
+                            ],
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                        onSubmitted: (query) => _searchLocationGeoapify(query, (results) {
+                          setState(() {
+                            searchResults = results;
+                          });
+                        }),
+                        textInputAction: TextInputAction.search,
+                      ),
                     ),
+                    const SizedBox(height: 12),
+                    // Search results
+                    if (searchResults.isNotEmpty)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F6F6),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                          ),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: searchResults.length,
+                          itemBuilder: (context, i) {
+                            final r = searchResults[i];
+                            return ListTile(
+                              leading: const Icon(Icons.location_on, color: Color(0xFF8B5CF6), size: 18),
+                              title: Text(
+                                r['name'] ?? r['formatted'],
+                                style: GoogleFonts.afacad(
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF22223B),
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: Text(
+                                r['formatted'],
+                                style: GoogleFonts.afacad(color: Colors.grey[600], fontSize: 12),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () => setState(() {
+                                locationController.text = r['formatted'];
+                                selectedLat = r['lat'];
+                                selectedLon = r['lon'];
+                                searchResults.clear();
+                              }),
+                            );
+                          },
+                        ),
+                      ),
+                    // Show coordinates if location selected
+                    if (locationController.text.isNotEmpty && searchResults.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Color(0xFF8B5CF6), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Tọa độ: ${selectedLat.toStringAsFixed(4)}, ${selectedLon.toStringAsFixed(4)}',
+                                style: GoogleFonts.afacad(fontSize: 12, color: const Color(0xFF22223B)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     // Description
                     TextFormField(
@@ -463,8 +701,8 @@ class _LostPetScreenState extends State<LostPetScreen> {
                   ],
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
