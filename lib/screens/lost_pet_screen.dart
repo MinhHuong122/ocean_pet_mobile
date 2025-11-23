@@ -364,6 +364,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                       style: GoogleFonts.afacad(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -421,12 +422,23 @@ class _LostPetScreenState extends State<LostPetScreen> {
                     // Pet name
                     TextFormField(
                       controller: nameController,
+                      style: GoogleFonts.afacad(color: Colors.grey[700]),
                       decoration: InputDecoration(
                         labelText: 'Tên thú cưng',
+                        labelStyle: GoogleFonts.afacad(color: Colors.grey[600]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
                         ),
-                        prefixIcon: const Icon(Icons.pets),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
+                        ),
+                        prefixIcon: const Icon(Icons.pets, color: Colors.grey),
                       ),
                       validator: (v) =>
                           v?.isEmpty ?? true ? 'Nhập tên thú cưng' : null,
@@ -435,24 +447,35 @@ class _LostPetScreenState extends State<LostPetScreen> {
                     // Pet type
                     DropdownButtonFormField<String>(
                       initialValue: selectedType,
+                      style: GoogleFonts.afacad(color: Colors.grey[700]),
                       decoration: InputDecoration(
                         labelText: 'Loại thú cưng',
+                        labelStyle: GoogleFonts.afacad(color: Colors.grey[600]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
                         ),
-                        prefixIcon: const Icon(Icons.category),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
+                        ),
+                        prefixIcon: const Icon(Icons.category, color: Colors.grey),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'Chó', child: Text('Chó')),
-                        DropdownMenuItem(value: 'Mèo', child: Text('Mèo')),
-                        DropdownMenuItem(value: 'Cá', child: Text('Cá')),
-                        DropdownMenuItem(value: 'Rắn', child: Text('Rắn')),
-                        DropdownMenuItem(value: 'Rùa', child: Text('Rùa')),
-                        DropdownMenuItem(value: 'Heo', child: Text('Heo')),
-                        DropdownMenuItem(value: 'Thỏ', child: Text('Thỏ')),
-                        DropdownMenuItem(value: 'Vẹt', child: Text('Vẹt')),
-                        DropdownMenuItem(value: 'Hamster', child: Text('Hamster')),
-                        DropdownMenuItem(value: 'Khác', child: Text('Khác')),
+                      items: [
+                        DropdownMenuItem(value: 'Chó', child: Text('Chó', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Mèo', child: Text('Mèo', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Cá', child: Text('Cá', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Rắn', child: Text('Rắn', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Rùa', child: Text('Rùa', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Heo', child: Text('Heo', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Thỏ', child: Text('Thỏ', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Vẹt', child: Text('Vẹt', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Hamster', child: Text('Hamster', style: GoogleFonts.afacad(color: Colors.grey[700]))),
+                        DropdownMenuItem(value: 'Khác', child: Text('Khác', style: GoogleFonts.afacad(color: Colors.grey[700]))),
                       ],
                       onChanged: (v) {
                         if (v != null) {
@@ -469,7 +492,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                         color: const Color(0xFFF6F6F6),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                          color: Colors.black,
                         ),
                       ),
                       child: TextField(
@@ -477,8 +500,8 @@ class _LostPetScreenState extends State<LostPetScreen> {
                         style: GoogleFonts.afacad(fontSize: 16),
                         decoration: InputDecoration(
                           hintText: 'Tìm kiếm khu vực mất tích...',
-                          hintStyle: GoogleFonts.afacad(color: Colors.grey[400]),
-                          prefixIcon: const Icon(Icons.location_on, color: Color(0xFF8B5CF6)),
+                          hintStyle: GoogleFonts.afacad(color: Colors.grey[600]),
+                          prefixIcon: const Icon(Icons.location_on, color: Colors.grey),
                           suffixIcon: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -491,7 +514,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                                   },
                                 ),
                               IconButton(
-                                icon: const Icon(Icons.my_location, color: Color(0xFF8B5CF6)),
+                                icon: const Icon(Icons.my_location, color: Colors.grey),
                                 onPressed: () => _getCurrentLocationGPS(
                                   (lat, lon) {
                                     setState(() {
@@ -529,7 +552,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                           height: 30,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
                           ),
                         ),
                       ),
@@ -540,7 +563,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                           color: const Color(0xFFF6F6F6),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                            color: Colors.black,
                           ),
                         ),
                         child: ListView.builder(
@@ -550,7 +573,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                           itemBuilder: (context, i) {
                             final r = searchResults[i];
                             return ListTile(
-                              leading: const Icon(Icons.location_on, color: Color(0xFF8B5CF6), size: 18),
+                              leading: const Icon(Icons.location_on, color: Colors.grey, size: 18),
                               title: Text(
                                 r['name'] ?? r['formatted'],
                                 style: GoogleFonts.afacad(
@@ -581,17 +604,17 @@ class _LostPetScreenState extends State<LostPetScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                          color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.check_circle, color: Color(0xFF8B5CF6), size: 18),
+                            const Icon(Icons.check_circle, color: Colors.grey, size: 18),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Tọa độ: ${selectedLat.toStringAsFixed(4)}, ${selectedLon.toStringAsFixed(4)}',
-                                style: GoogleFonts.afacad(fontSize: 12, color: const Color(0xFF22223B)),
+                                style: GoogleFonts.afacad(fontSize: 12, color: Colors.grey[700]),
                               ),
                             ),
                           ],
@@ -601,27 +624,50 @@ class _LostPetScreenState extends State<LostPetScreen> {
                     // Description
                     TextFormField(
                       controller: descriptionController,
+                      style: GoogleFonts.afacad(color: Colors.grey[700]),
                       decoration: InputDecoration(
                         labelText: 'Mô tả chi tiết',
+                        labelStyle: GoogleFonts.afacad(color: Colors.grey[600]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
                         ),
-                        prefixIcon: const Icon(Icons.description),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
+                        ),
+                        prefixIcon: const Icon(Icons.description, color: Colors.grey),
                       ),
                       maxLines: 3,
                       validator: (v) =>
                           v?.isEmpty ?? true ? 'Nhập mô tả chi tiết' : null,
+                      onChanged: (v) {},
                     ),
                     const SizedBox(height: 12),
                     // Phone
                     TextFormField(
                       controller: phoneController,
+                      style: GoogleFonts.afacad(color: Colors.grey[700]),
                       decoration: InputDecoration(
                         labelText: 'Số điện thoại',
+                        labelStyle: GoogleFonts.afacad(color: Colors.grey[600]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
                         ),
-                        prefixIcon: const Icon(Icons.phone),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
+                        ),
+                        prefixIcon: const Icon(Icons.phone, color: Colors.grey),
                       ),
                       validator: (v) =>
                           v?.isEmpty ?? true ? 'Nhập số điện thoại' : null,
