@@ -451,13 +451,16 @@ class _TranslationScreenState extends State<TranslationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Pet selection tabs
-            Row(
-              children: [
-                _buildPetTab('🐕 Chó', 0),
-                const SizedBox(width: 8),
-                _buildPetTab('🐱 Mèo', 1),
-              ],
+            // Pet selection tabs - centered
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildPetTab('Chó', 0),
+                  const SizedBox(width: 12),
+                  _buildPetTab('Mèo', 1),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             // Recording and AI Translation Section
