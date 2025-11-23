@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/AppointmentService.dart';
 import './custom_bottom_nav.dart';
 import './appointment_detail_screen.dart';
@@ -46,11 +48,69 @@ class _CareScreenState extends State<CareScreen> {
   Future<void> _loadFirebaseAppointments() async {
     try {
       final firebaseAppointments = await AppointmentService.getAppointments();
+      
+      // Map Firebase data to UI format
+      final mappedAppointments = firebaseAppointments.map((apt) {
+        // Parse appointment_date Timestamp to DateTime
+        DateTime appointmentDateTime;
+        if (apt['appointment_date'] is Timestamp) {
+          appointmentDateTime = (apt['appointment_date'] as Timestamp).toDate();
+        } else if (apt['appointment_date'] is DateTime) {
+          appointmentDateTime = apt['appointment_date'] as DateTime;
+        } else {
+          appointmentDateTime = DateTime.now();
+        }
+
+        // Determine icon and color based on type
+        IconData icon = Icons.medical_services;
+        Color color = const Color(0xFFEF5350);
+        
+        switch (apt['type']?.toLowerCase()) {
+          case 'health_checkup':
+          case 'khám sức khỏe':
+            icon = Icons.medical_services;
+            color = const Color(0xFFEF5350);
+            break;
+          case 'vaccination':
+          case 'tiêm phòng':
+            icon = Icons.vaccines;
+            color = const Color(0xFF66BB6A);
+            break;
+          case 'bath_spa':
+          case 'tắm & spa':
+            icon = Icons.bathroom;
+            color = const Color(0xFF64B5F6);
+            break;
+          case 'grooming':
+            icon = Icons.content_cut;
+            color = const Color(0xFFFFB74D);
+            break;
+          default:
+            icon = Icons.event;
+            color = const Color(0xFF8E97FD);
+        }
+
+        return {
+          'id': apt['id'] ?? '',
+          'title': apt['type'] ?? 'Lịch hẹn',
+          'date': DateFormat('dd/MM/yyyy').format(appointmentDateTime),
+          'time': DateFormat('h:mm a').format(appointmentDateTime),
+          'location': apt['location'] ?? 'Không xác định',
+          'icon': icon,
+          'color': color,
+          'notes': apt['notes'] ?? '',
+          'petId': apt['pet_id'] ?? '',
+          'appointmentDate': appointmentDateTime,
+        };
+      }).toList();
+
       setState(() {
-        appointments = firebaseAppointments;
+        appointments = mappedAppointments;
       });
+      print('✅ [CareScreen] Loaded ${appointments.length} appointments from Firebase');
     } catch (e) {
-      print('Lỗi tải lịch hẹn: $e');
+      print('❌ [CareScreen] Lỗi tải lịch hẹn: $e');
+      // Keep default appointments if load fails
     }
   }
 
