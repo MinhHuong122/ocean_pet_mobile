@@ -786,6 +786,132 @@ class _LostPetScreenState extends State<LostPetScreen> {
     );
   }
 
+  Future<void> _showPostActions(Map<String, dynamic> pet) async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '${pet['name']} - Tùy chọn',
+              style: GoogleFonts.afacad(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Edit button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showPostForm(editingPost: pet);
+                },
+                icon: const Icon(Icons.edit),
+                label: const Text('Chỉnh sửa tin'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B5CF6),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Delete button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  // Show confirmation dialog
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.white,
+                      title: Text(
+                        'Xóa tin',
+                        style: GoogleFonts.afacad(fontWeight: FontWeight.bold),
+                      ),
+                      content: Text(
+                        'Bạn có chắc muốn xóa "${pet['name']}"?',
+                        style: GoogleFonts.afacad(),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Hủy', style: GoogleFonts.afacad()),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            try {
+                              print('🗑️ [LostPetScreen] Deleting post: ${pet['id']}');
+                              await LostPetService.deleteLostPetPost(pet['id']);
+                              print('✅ [LostPetScreen] Post deleted successfully');
+                              setState(() => _lostPets.removeWhere((p) => p['id'] == pet['id']));
+                              _showSnackBar('✅ Đã xóa tin thất lạc');
+                            } catch (e) {
+                              print('❌ [LostPetScreen] Error deleting post: $e');
+                              _showSnackBar('❌ Lỗi xóa tin: $e');
+                            }
+                          },
+                          child: Text(
+                            'Xóa',
+                            style: GoogleFonts.afacad(color: Colors.red, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.delete),
+                label: const Text('Xóa tin'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Cancel button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[300],
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text('Hủy', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -894,7 +1020,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                     itemCount: _displayedPets.length,
                     itemBuilder: (context, index) {
                       final pet = _displayedPets[index];
-                      final isMyPost = pet['userId'] == _currentUserId;
+                      final isMyPost = pet['userId'] == 'current_user';
 
                       return GestureDetector(
                         onTap: () => _showPetDetail(pet),
@@ -981,17 +1107,11 @@ class _LostPetScreenState extends State<LostPetScreen> {
                                             SizedBox(
                                               height: 28,
                                               child: ElevatedButton.icon(
-                                                onPressed: () async {
-                                                  try {
-                                                    print('🗑️ [LostPetScreen] Deleting lost pet post: ${pet['id']}');
-                                                    await LostPetService.deleteLostPetPost(pet['id']);
-                                                    print('✅ [LostPetScreen] Lost pet post deleted successfully');
-                                                    await _loadFirebaseData();
-                                                    _showSnackBar('✅ Đã xóa tin');
-                                                  } catch (e) {
-                                                    print('❌ [LostPetScreen] Error deleting post: $e');
-                                                    _showSnackBar('❌ Lỗi xóa tin: $e');
-                                                  }
+                                                onPressed: () {
+                                                  setState(() =>
+                                                      _lostPets.remove(pet));
+                                                  _showSnackBar(
+                                                      'Đã xóa tin');
                                                 },
                                                 icon: const Icon(Icons.delete,
                                                     size: 14),
