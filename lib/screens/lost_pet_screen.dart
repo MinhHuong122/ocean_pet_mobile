@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../services/LostPetService.dart';
 import '../services/CloudinaryService.dart';
 
@@ -163,6 +165,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
     );
     
     String selectedType = isEditing ? editingPost['type'] : 'Chó';
+    File? selectedImage;
 
     showModalBottomSheet(
       context: context,
@@ -210,6 +213,57 @@ class _LostPetScreenState extends State<LostPetScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    
+                    // Image picker
+                    GestureDetector(
+                      onTap: () async {
+                        final ImagePicker picker = ImagePicker();
+                        final XFile? image = await picker.pickImage(
+                          source: ImageSource.gallery,
+                          imageQuality: 80,
+                        );
+                        if (image != null) {
+                          setState(() {
+                            selectedImage = File(image.path);
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                            width: 2,
+                          ),
+                        ),
+                        child: selectedImage != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.file(
+                                  selectedImage!,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.image, size: 48, color: Colors.grey[400]),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Tap để chọn hình ảnh',
+                                    style: GoogleFonts.afacad(
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
                     // Pet name
                     TextFormField(
                       controller: nameController,
@@ -322,13 +376,31 @@ class _LostPetScreenState extends State<LostPetScreen> {
                                 } else {
                                   // Create new post in Firebase
                                   print('📝 [LostPetScreen] Creating new lost pet post');
+                                  String imageUrl = '';
+                                  
+                                  // Upload image if selected
+                                  if (selectedImage != null) {
+                                    try {
+                                      print('📸 [LostPetScreen] Uploading image to Cloudinary...');
+                                      imageUrl = await CloudinaryService.uploadImage(
+                                        selectedImage!,
+                                        'lost_pets',
+                                        fileName: '${type}_${DateTime.now().millisecondsSinceEpoch}',
+                                      );
+                                      print('✅ [LostPetScreen] Image uploaded: $imageUrl');
+                                    } catch (e) {
+                                      print('⚠️ [LostPetScreen] Image upload failed: $e');
+                                      // Continue without image
+                                    }
+                                  }
+                                  
                                   final postId = await LostPetService.createLostPetPost(
                                     petName: name,
                                     petType: type,
                                     breed: 'Unknown',
                                     color: 'Unknown',
                                     distinguishingFeatures: description,
-                                    imageUrl: '',
+                                    imageUrl: imageUrl,
                                     lostDate: DateTime.now(),
                                     lostLocation: location,
                                     latitude: 10.7769,
