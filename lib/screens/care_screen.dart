@@ -138,13 +138,37 @@ class _CareScreenState extends State<CareScreen> {
                 const SizedBox(height: 16),
 
                 // Upcoming Appointments (moved to top)
-                Text(
-                  'Lịch hẹn sắp tới',
-                  style: GoogleFonts.afacad(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF22223B),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Lịch hẹn sắp tới',
+                      style: GoogleFonts.afacad(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF22223B),
+                      ),
+                    ),
+                    // Test Notification Button
+                    GestureDetector(
+                      onTap: () async {
+                        print('📢 Testing notification...');
+                        await NotificationService.showTestNotification();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B5CF6).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.notifications_active,
+                          color: const Color(0xFF8B5CF6),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 

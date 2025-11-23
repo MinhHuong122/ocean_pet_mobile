@@ -113,7 +113,6 @@ dependencies:
   table_calendar: ^3.0.9
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.2
-  workmanager: ^0.5.2
   
   # PDF generation (đẹp, có logo, mã QR)
   pdf: ^3.10.0

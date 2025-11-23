@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:workmanager/workmanager.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
+    print('⏳ [NotificationService] Initializing...');
+    
+    // Initialize timezone data
     tz_data.initializeTimeZones();
     
     const AndroidInitializationSettings androidInitSettings =
@@ -38,46 +40,24 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
 
-    // Initialize Workmanager for background tasks
-    await Workmanager().initialize(callbackDispatcher);
+    // Create notification channels for Android
+    const channel = AndroidNotificationChannel(
+      'appointment_channel',
+      'Nhắc nhở lịch hẹn',
+      description: 'Thông báo nhắc nhở các lịch hẹn khám thú cưng',
+      importance: Importance.max,
+      enableLights: true,
+      enableVibration: true,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('arlam'),
+    );
+
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
 
     print('✅ [NotificationService] Initialized successfully');
-  }
-
-  static void callbackDispatcher() {
-    Workmanager().executeTask((taskName, inputData) async {
-      if (taskName == 'appointmentReminder') {
-        final String appointmentTitle = inputData?['title'] ?? 'Lịch hẹn';
-        final String appointmentTime = inputData?['time'] ?? '';
-        final int appointmentId = inputData?['appointmentId'] ?? 0;
-
-        await _notificationsPlugin.show(
-          appointmentId,
-          '🔔 Nhắc nhở lịch hẹn',
-          '$appointmentTitle - $appointmentTime',
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              'appointment_channel',
-              'Nhắc nhở lịch hẹn',
-              channelDescription: 'Thông báo nhắc nhở các lịch hẹn khám thú cưng',
-              importance: Importance.max,
-              priority: Priority.high,
-              enableVibration: true,
-              enableLights: true,
-              color: const Color(0xFF8B5CF6),
-              sound: const RawResourceAndroidNotificationSound('arlam'),
-            ),
-            iOS: const DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true,
-            ),
-          ),
-        );
-        print('✅ [NotificationService] Appointment reminder sent for: $appointmentTitle');
-      }
-      return Future.value(true);
-    });
   }
 
   static Future<void> scheduleAppointmentReminder({
@@ -88,6 +68,10 @@ class NotificationService {
     required String reminderTime, // '1day', '3days', '1week'
   }) async {
     try {
+      print('📝 [NotificationService] Scheduling reminder for: $appointmentTitle');
+      print('   Appointment time: $appointmentDateTime');
+      print('   Reminder type: $reminderTime');
+      
       // Calculate reminder time
       DateTime reminderDateTime = appointmentDateTime;
       
@@ -105,6 +89,9 @@ class NotificationService {
           reminderDateTime = appointmentDateTime.subtract(const Duration(days: 1));
       }
 
+      print('   Reminder will trigger at: $reminderDateTime');
+      print('   Current time: ${DateTime.now()}');
+      
       // Don't schedule if reminder time is in the past
       if (reminderDateTime.isBefore(DateTime.now())) {
         print('⚠️ [NotificationService] Reminder time is in the past, skipping');
@@ -117,6 +104,9 @@ class NotificationService {
         tz.local,
       );
 
+      print('   Timezone: ${tzDateTime.timeZone}');
+      print('   Scheduling mode: alarmClock (will bypass Do Not Disturb)');
+      
       // Schedule notification
       await _notificationsPlugin.zonedSchedule(
         appointmentId,
@@ -137,6 +127,7 @@ class NotificationService {
             ledColor: const Color(0xFF8B5CF6),
             ledOnMs: 1000,
             ledOffMs: 1000,
+            fullScreenIntent: true,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -148,30 +139,21 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dateAndTime,
       );
 
-      // Also schedule background task
-      await Workmanager().registerOneOffTask(
-        'appointmentReminder_$appointmentId',
-        'appointmentReminder',
-        initialDelay: reminderDateTime.difference(DateTime.now()),
-        inputData: {
-          'appointmentId': appointmentId,
-          'title': appointmentTitle,
-          'time': appointmentTime,
-        },
-      );
-
-      print('✅ [NotificationService] Scheduled reminder for: $appointmentTitle at ${tzDateTime.toString()}');
+      print('✅ [NotificationService] Reminder scheduled successfully!');
+      print('   ID: $appointmentId');
+      print('   Will trigger in: ${reminderDateTime.difference(DateTime.now()).inMinutes} minutes');
     } catch (e) {
       print('❌ [NotificationService] Error scheduling reminder: $e');
+      print('   Stack trace: ${StackTrace.current}');
     }
   }
 
   static Future<void> cancelAppointmentReminder(int appointmentId) async {
     try {
       await _notificationsPlugin.cancel(appointmentId);
-      await Workmanager().cancelByUniqueName('appointmentReminder_$appointmentId');
       print('✅ [NotificationService] Cancelled reminder for appointment: $appointmentId');
     } catch (e) {
       print('❌ [NotificationService] Error cancelling reminder: $e');
@@ -181,7 +163,6 @@ class NotificationService {
   static Future<void> cancelAllReminders() async {
     try {
       await _notificationsPlugin.cancelAll();
-      await Workmanager().cancelAll();
       print('✅ [NotificationService] Cancelled all reminders');
     } catch (e) {
       print('❌ [NotificationService] Error cancelling reminders: $e');
@@ -190,10 +171,17 @@ class NotificationService {
 
   static Future<void> showTestNotification() async {
     try {
+      print('📢 [NotificationService] Sending immediate test notification...');
+      print('   Title: 🔔 Thử nghiệm thông báo');
+      print('   Body: Đây là thông báo thử nghiệm từ ứng dụng Pet Care');
+      print('   Sound: arlam.mp3 (alarm)');
+      print('   Vibration: Enabled');
+      print('   LED: Purple (0xFF8B5CF6)');
+      
       await _notificationsPlugin.show(
         0,
         '🔔 Thử nghiệm thông báo',
-        'Đây là thông báo thử nghiệm từ ứng dụng Pet Care',
+        'Đây là thông báo thử nghiệm từ ứng dụng Pet Care - Nhấn để kiểm tra',
         NotificationDetails(
           android: AndroidNotificationDetails(
             'test_channel',
@@ -205,17 +193,24 @@ class NotificationService {
             enableLights: true,
             color: const Color(0xFF8B5CF6),
             sound: const RawResourceAndroidNotificationSound('arlam'),
+            ledColor: const Color(0xFF8B5CF6),
+            ledOnMs: 1000,
+            ledOffMs: 1000,
+            fullScreenIntent: true,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
             presentBadge: true,
             presentSound: true,
+            sound: 'alarm.caf',
           ),
         ),
       );
-      print('✅ [NotificationService] Test notification sent');
+      print('✅ [NotificationService] Test notification sent successfully!');
+      print('   You should see notification, hear alarm sound, feel vibration, and see LED blink');
     } catch (e) {
       print('❌ [NotificationService] Error sending test notification: $e');
+      print('   Details: ${e.toString()}');
     }
   }
 
