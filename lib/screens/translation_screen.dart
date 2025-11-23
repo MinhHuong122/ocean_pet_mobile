@@ -102,16 +102,67 @@ class _TranslationScreenState extends State<TranslationScreen> {
       setState(() {
         _isRecording = true;
         _recordedText = 'Đang ghi âm...';
+        _translatedText = null;
       });
     }
 
-    // Simulate recording for demo
+    // Simulate recording for 3 seconds
     await Future.delayed(const Duration(seconds: 3));
+
+    if (mounted && _isRecording) {
+      // Analyze and translate the recorded sound
+      await _analyzeAndTranslateSound();
+    }
+  }
+
+  /// Analyze recorded sound and generate translation
+  Future<void> _analyzeAndTranslateSound() async {
+    // Simulate AI analysis by detecting pet type and emotion
+    final petType = _selectedPet == 0 ? 'Chó' : 'Mèo';
+    final emotionRandom = DateTime.now().millisecondsSinceEpoch % 3;
+    final isHappy = emotionRandom == 0;
+    final isSad = emotionRandom == 1;
+
+    String detectedEmotion = 'Vui vẻ';
+    String translation = '';
+    String meaning = '';
+
+    if (_selectedPet == 0) {
+      // Dog
+      if (isHappy) {
+        detectedEmotion = 'Vui vẻ';
+        translation = 'Gâu gâu! Gâu gâu gâu!';
+        meaning = '$petType đang rất vui vẻ, muốn chơi cùng bạn';
+      } else if (isSad) {
+        detectedEmotion = 'Buồn';
+        translation = 'Ương ương... ương...';
+        meaning = '$petType đang buồn hoặc cô đơn, cần sự chú ý của bạn';
+      } else {
+        detectedEmotion = 'Cảnh báo';
+        translation = 'Sủa sủa! Sủa!';
+        meaning = '$petType đang cảnh báo hoặc muốn bảo vệ khu vực của mình';
+      }
+    } else {
+      // Cat
+      if (isHappy) {
+        detectedEmotion = 'Làm nũng';
+        translation = 'Meo meo! Meo meo...';
+        meaning = '$petType đang làm nũng, muốn bạn vuốt ve hoặc chơi cùng';
+      } else if (isSad) {
+        detectedEmotion = 'Tìm mẹ';
+        translation = 'Meo... meo... meow!';
+        meaning = '$petType đang tìm kiếm bạn, cảm thấy cô đơn';
+      } else {
+        detectedEmotion = 'Tức giận';
+        translation = 'Ffff... hissss! Pfft!';
+        meaning = '$petType đang tức giận hoặc cảm thấy bị đe dọa';
+      }
+    }
 
     if (mounted) {
       setState(() {
-        _recordedText = 'Ghi âm hoàn tất!';
-        _translatedText = 'Thú cưng của bạn đang giao tiếp...';
+        _recordedText = 'Ghi âm hoàn tất! ($detectedEmotion)';
+        _translatedText = '$translation\n\n📝 Ý nghĩa: $meaning';
       });
     }
   }
