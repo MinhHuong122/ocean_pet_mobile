@@ -57,16 +57,21 @@ class UserProfileService {
       if (district != null) data['district'] = district;
       if (ward != null) data['ward'] = ward;
 
+      // Always set user_id and updated_at for consistency
+      data['user_id'] = userId;
       data['updated_at'] = FieldValue.serverTimestamp();
 
       print('📤 [UserProfileService] Sending data: $data');
       print('📍 [UserProfileService] Firestore path: users/$userId');
       
-      if (data.length > 1) { // More than just updated_at
-        await _firestore.collection('users').doc(userId).update(data);
-        print('✅ [UserProfileService] Update successful!');
+      if (data.length > 2) { // More than user_id and updated_at
+        final docRef = _firestore.collection('users').doc(userId);
+        await docRef.set(data, SetOptions(merge: true));
+        print('✅ [UserProfileService] Update successful! Using set(merge: true)');
       } else {
-        print('⚠️ [UserProfileService] No data to update (only updated_at)');
+        print('⚠️ [UserProfileService] Only updating metadata (user_id, updated_at)');
+        final docRef = _firestore.collection('users').doc(userId);
+        await docRef.set(data, SetOptions(merge: true));
       }
     } catch (e) {
       print('❌ [UserProfileService] Error updating user profile: $e');
