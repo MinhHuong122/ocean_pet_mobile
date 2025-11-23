@@ -125,7 +125,7 @@ class _TranslationScreenState extends State<TranslationScreen> {
     }
   }
 
-  /// Play pet sound from voice folder
+  /// Play or stop pet sound from voice folder
   Future<void> _playPetSound(String soundFileName) async {
     if (!_isInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,10 +135,18 @@ class _TranslationScreenState extends State<TranslationScreen> {
     }
 
     try {
-      setState(() => _playingSound = soundFileName);
+      // If the same sound is playing, stop it
+      if (_playingSound == soundFileName) {
+        await _audioPlayer.stop();
+        if (mounted) {
+          setState(() => _playingSound = null);
+        }
+        return;
+      }
 
       // Stop any currently playing audio
       await _audioPlayer.stop();
+      setState(() => _playingSound = soundFileName);
 
       // Play audio from assets
       await _audioPlayer.setAsset('lib/res/voice/$soundFileName');
@@ -234,7 +242,7 @@ class _TranslationScreenState extends State<TranslationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '🎙️ Ghi Âm & Dịch AI',
+            '🎙️ Ghi Âm & Dịch',
             style: GoogleFonts.afacad(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -283,24 +291,36 @@ class _TranslationScreenState extends State<TranslationScreen> {
           // Recording Status
           if (_isRecording)
             Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(Colors.red[400]),
-                      strokeWidth: 2,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(Colors.red[400]),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Đang ghi âm...',
+                        style: GoogleFonts.afacad(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red[400],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(height: 12),
                   Text(
-                    'Đang ghi âm...',
+                    'Nhấn nút dừng để kết thúc ghi âm',
                     style: GoogleFonts.afacad(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.red[400],
+                      fontSize: 12,
+                      color: Colors.grey[600],
                     ),
                   ),
                 ],
@@ -313,6 +333,7 @@ class _TranslationScreenState extends State<TranslationScreen> {
               children: [
                 const SizedBox(height: 12),
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
@@ -349,6 +370,7 @@ class _TranslationScreenState extends State<TranslationScreen> {
               children: [
                 const SizedBox(height: 12),
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
