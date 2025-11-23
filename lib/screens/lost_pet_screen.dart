@@ -58,6 +58,26 @@ class _LostPetScreenState extends State<LostPetScreen> {
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.useFirebase) {
+      _loadFirebaseData();
+    }
+  }
+
+  Future<void> _loadFirebaseData() async {
+    try {
+      final pets = await LostPetService.getLostPets();
+      setState(() {
+        _lostPets = pets;
+      });
+    } catch (e) {
+      print('Lỗi tải dữ liệu: $e');
+      _showSnackBar('Lỗi tải dữ liệu: $e');
+    }
+  }
+
   List<Map<String, dynamic>> get _myPosts {
     // Simulate user's own posts
     return _lostPets.where((pet) => pet['userId'] == 'current_user').toList();
@@ -211,34 +231,75 @@ class _LostPetScreenState extends State<LostPetScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (formKey.currentState!.validate()) {
                           formKey.currentState!.save();
-                          // Simulate API call
-                          if (isEditing) {
-                            editingPost['name'] = name;
-                            editingPost['type'] = type;
-                            editingPost['location'] = location;
-                            editingPost['description'] = description;
-                            editingPost['phone'] = phone;
+                          
+                          if (widget.useFirebase) {
+                            try {
+                              if (isEditing) {
+                                // Update in Firebase
+                                await LostPetService.updateLostPetPost(
+                                  editingPost['id'],
+                                  {
+                                    'pet_name': name,
+                                    'pet_type': type,
+                                    'lost_location': location,
+                                    'distinguishing_features': description,
+                                    'phone_number': phone,
+                                  },
+                                );
+                              } else {
+                                // Create new post in Firebase
+                                await LostPetService.createLostPetPost(
+                                  petName: name,
+                                  petType: type,
+                                  breed: 'Unknown',
+                                  color: 'Unknown',
+                                  distinguishingFeatures: description,
+                                  imageUrl: '',
+                                  lostDate: DateTime.now(),
+                                  lostLocation: location,
+                                  latitude: 10.7769,
+                                  longitude: 106.6955,
+                                  phoneNumber: phone,
+                                );
+                              }
+                              if (mounted) {
+                                Navigator.pop(context);
+                                await _loadFirebaseData();
+                                _showSnackBar(isEditing ? 'Cập nhật thành công' : 'Đăng tin thành công');
+                              }
+                            } catch (e) {
+                              _showSnackBar('Lỗi: $e');
+                            }
                           } else {
-                            _lostPets.add({
-                              'id': DateTime.now().toString(),
-                              'name': name,
-                              'type': type,
-                              'location': location,
-                              'description': description,
-                              'phone': phone,
-                              'date': DateTime.now().toString(),
-                              'image': type == 'Chó' ? '🐕' : '🐱',
-                              'userId': 'current_user',
-                              'lat': 10.7769,
-                              'lng': 106.6955,
-                            });
+                            // Legacy mode - update local list
+                            if (isEditing) {
+                              editingPost['name'] = name;
+                              editingPost['type'] = type;
+                              editingPost['location'] = location;
+                              editingPost['description'] = description;
+                              editingPost['phone'] = phone;
+                            } else {
+                              _lostPets.add({
+                                'id': DateTime.now().toString(),
+                                'name': name,
+                                'type': type,
+                                'location': location,
+                                'description': description,
+                                'phone': phone,
+                                'date': DateTime.now().toString(),
+                                'image': type == 'Chó' ? '🐕' : '🐱',
+                                'userId': 'current_user',
+                                'lat': 10.7769,
+                                'lng': 106.6955,
+                              });
+                            }
+                            setState(() {});
+                            Navigator.pop(context);
+                            _showSnackBar(isEditing ? 'Cập nhật thành công' : 'Đăng tin thành công');
                           }
-                          setState(() {});
-                          Navigator.pop(context);
-                          _showSnackBar(isEditing ? 'Cập nhật thành công' : 'Đăng tin thành công');
                         }
                       },
                       style: ElevatedButton.styleFrom(

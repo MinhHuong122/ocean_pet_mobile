@@ -198,7 +198,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (nameController.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -208,13 +208,34 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                           );
                           return;
                         }
+
+                        // Save to Firebase if enabled
                         if (widget.useFirebase) {
-                          // Firebase mode - will be implemented
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Firebase integration coming soon'),
-                            ),
-                          );
+                          try {
+                            await UserProfileService.updateUserProfile(
+                              name: nameController.text.trim(),
+                              phoneNumber: phoneController.text.trim(),
+                              address: addressController.text.trim(),
+                            );
+                            if (mounted) {
+                              Navigator.pop(context, true);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Đã cập nhật thông tin'),
+                                  backgroundColor: Color(0xFF66BB6A),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Lỗi: $e'),
+                                  backgroundColor: Color(0xFFEF5350),
+                                ),
+                              );
+                            }
+                          }
                         } else {
                           // Legacy mode
                           widget.onUpdate?.call(

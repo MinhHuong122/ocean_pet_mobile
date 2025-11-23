@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/AppointmentService.dart';
 import './custom_bottom_nav.dart';
 import './appointment_detail_screen.dart';
 import './nutrition_screen.dart';
@@ -35,6 +36,23 @@ class _CareScreenState extends State<CareScreen> {
       'color': Color(0xFF66BB6A),
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFirebaseAppointments();
+  }
+
+  Future<void> _loadFirebaseAppointments() async {
+    try {
+      final firebaseAppointments = await AppointmentService.getAppointments();
+      setState(() {
+        appointments = firebaseAppointments;
+      });
+    } catch (e) {
+      print('Lỗi tải lịch hẹn: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
