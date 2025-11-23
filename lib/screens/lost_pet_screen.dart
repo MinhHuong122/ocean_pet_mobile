@@ -129,8 +129,10 @@ class _LostPetScreenState extends State<LostPetScreen> {
     return _selectedTab == 0 ? _lostPets : _myPosts;
   }
 
-  Future<void> _searchLocationGeoapify(String query, Function(List<Map<String, dynamic>>) onResults) async {
+  Future<void> _searchLocationGeoapifyWithCallback(String query, Function(List<Map<String, dynamic>>) onResults, Function(bool) onLoading) async {
     if (query.isEmpty) return;
+
+    onLoading(true);
 
     try {
       const geoapifyApiKey = '7c0100b7e4614f859ec61a564091807b';
@@ -161,7 +163,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
           }).toList();
           onResults(results);
         } else {
-          _showSnackBar('Không tìm thấy địa điểm');
+          _showLocationError('Không tìm thấy địa điểm');
           onResults([]);
         }
       } else {
@@ -169,8 +171,10 @@ class _LostPetScreenState extends State<LostPetScreen> {
       }
     } catch (e) {
       print('Error search: $e');
-      _showSnackBar('Lỗi tìm kiếm: ${e.toString()}');
+      _showLocationError('Lỗi tìm kiếm: ${e.toString()}');
       onResults([]);
+    } finally {
+      onLoading(false);
     }
   }
 
@@ -182,14 +186,13 @@ class _LostPetScreenState extends State<LostPetScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _showSnackBar('Bạn cần cấp quyền truy cập vị trí');
+          _showLocationError('Bạn cần cấp quyền truy cập vị trí');
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showSnackBar('Vui lòng bật quyền vị trí trong Cài đặt');
-        await Geolocator.openLocationSettings();
+        _showGPSPermissionDialog();
         return;
       }
 
@@ -206,7 +209,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
       onLocation(position.latitude, position.longitude);
     } catch (e) {
       print('Location Error: $e');
-      _showSnackBar('Không thể lấy vị trí.');
+      _showLocationError('Không thể lấy vị trí.');
     } finally {
       onLoading(false);
     }
@@ -237,8 +240,57 @@ class _LostPetScreenState extends State<LostPetScreen> {
       }
     } catch (e) {
       print('Error reverse: $e');
-      _showSnackBar('Không xác định được địa chỉ');
+      _showLocationError('Không xác định được địa chỉ');
     }
+  }
+
+  void _showLocationError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.afacad()),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _showGPSPermissionDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          'Cần quyền vị trí',
+          style: GoogleFonts.afacad(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF22223B),
+          ),
+        ),
+        content: Text(
+          'Vui lòng bật quyền vị trí trong Cài đặt.',
+          style: GoogleFonts.afacad(color: const Color(0xFF22223B)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy', style: GoogleFonts.afacad()),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Geolocator.openLocationSettings();
+            },
+            child: Text(
+              'Mở Cài đặt',
+              style: GoogleFonts.afacad(
+                color: const Color(0xFF8B5CF6),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showPostForm({Map<String, dynamic>? editingPost}) {
@@ -280,6 +332,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
             double selectedLat = isEditing ? (editingPost['lat'] ?? 10.7769) : 10.7769;
             double selectedLon = isEditing ? (editingPost['lng'] ?? 106.6955) : 106.6955;
             List<Map<String, dynamic>> searchResults = [];
+            bool isSearchingLocation = false;
             
             return Padding(
               padding: EdgeInsets.only(
@@ -457,9 +510,10 @@ class _LostPetScreenState extends State<LostPetScreen> {
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.all(16),
                         ),
-                        onSubmitted: (query) => _searchLocationGeoapify(
+                        onSubmitted: (query) => _searchLocationGeoapifyWithCallback(
                           query,
                           (results) => setState(() => searchResults = results),
+                          (isLoading) => setState(() { isSearchingLocation = isLoading; }),
                         ),
                         textInputAction: TextInputAction.search,
                       ),
@@ -467,7 +521,19 @@ class _LostPetScreenState extends State<LostPetScreen> {
                     const SizedBox(height: 12),
                     
                     // Search results or loading
-                    // Note: Loading state can be tracked in parent if needed
+                    if (isSearchingLocation)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
+                          ),
+                        ),
+                      ),
+                    
                     if (searchResults.isNotEmpty)
                       Container(
                         decoration: BoxDecoration(
