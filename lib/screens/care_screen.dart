@@ -50,59 +50,68 @@ class _CareScreenState extends State<CareScreen> {
       final firebaseAppointments = await AppointmentService.getAppointments();
       
       // Map Firebase data to UI format
-      final mappedAppointments = firebaseAppointments.map((apt) {
-        // Parse appointment_date Timestamp to DateTime
-        DateTime appointmentDateTime;
-        if (apt['appointment_date'] is Timestamp) {
-          appointmentDateTime = (apt['appointment_date'] as Timestamp).toDate();
-        } else if (apt['appointment_date'] is DateTime) {
-          appointmentDateTime = apt['appointment_date'] as DateTime;
-        } else {
-          appointmentDateTime = DateTime.now();
-        }
+      final mappedAppointments = <Map<String, dynamic>>[];
+      
+      for (var apt in firebaseAppointments) {
+        try {
+          // Parse appointment_date Timestamp to DateTime
+          DateTime appointmentDateTime;
+          if (apt['appointment_date'] is Timestamp) {
+            appointmentDateTime = (apt['appointment_date'] as Timestamp).toDate();
+          } else if (apt['appointment_date'] is DateTime) {
+            appointmentDateTime = apt['appointment_date'] as DateTime;
+          } else {
+            appointmentDateTime = DateTime.now();
+          }
 
-        // Determine icon and color based on type
-        IconData icon = Icons.medical_services;
-        Color color = const Color(0xFFEF5350);
-        
-        switch (apt['type']?.toLowerCase()) {
-          case 'health_checkup':
-          case 'khám sức khỏe':
-            icon = Icons.medical_services;
-            color = const Color(0xFFEF5350);
-            break;
-          case 'vaccination':
-          case 'tiêm phòng':
-            icon = Icons.vaccines;
-            color = const Color(0xFF66BB6A);
-            break;
-          case 'bath_spa':
-          case 'tắm & spa':
-            icon = Icons.bathroom;
-            color = const Color(0xFF64B5F6);
-            break;
-          case 'grooming':
-            icon = Icons.content_cut;
-            color = const Color(0xFFFFB74D);
-            break;
-          default:
-            icon = Icons.event;
-            color = const Color(0xFF8E97FD);
-        }
+          // Determine icon and color based on type
+          IconData icon = Icons.medical_services;
+          Color color = const Color(0xFFEF5350);
+          
+          switch (apt['type']?.toString().toLowerCase()) {
+            case 'health_checkup':
+            case 'khám sức khỏe':
+              icon = Icons.medical_services;
+              color = const Color(0xFFEF5350);
+              break;
+            case 'vaccination':
+            case 'tiêm phòng':
+              icon = Icons.vaccines;
+              color = const Color(0xFF66BB6A);
+              break;
+            case 'bath_spa':
+            case 'tắm & spa':
+              icon = Icons.bathroom;
+              color = const Color(0xFF64B5F6);
+              break;
+            case 'grooming':
+              icon = Icons.content_cut;
+              color = const Color(0xFFFFB74D);
+              break;
+            default:
+              icon = Icons.event;
+              color = const Color(0xFF8E97FD);
+          }
 
-        return {
-          'id': apt['id'] ?? '',
-          'title': apt['type'] ?? 'Lịch hẹn',
-          'date': DateFormat('dd/MM/yyyy').format(appointmentDateTime),
-          'time': DateFormat('h:mm a').format(appointmentDateTime),
-          'location': apt['location'] ?? 'Không xác định',
-          'icon': icon,
-          'color': color,
-          'notes': apt['notes'] ?? '',
-          'petId': apt['pet_id'] ?? '',
-          'appointmentDate': appointmentDateTime,
-        };
-      }).toList();
+          final appointment = {
+            'id': (apt['id'] ?? '').toString(),
+            'title': (apt['type'] ?? 'Lịch hẹn').toString(),
+            'date': DateFormat('dd/MM/yyyy').format(appointmentDateTime),
+            'time': DateFormat('h:mm a').format(appointmentDateTime),
+            'location': (apt['location'] ?? 'Không xác định').toString(),
+            'icon': icon,
+            'color': color,
+            'notes': (apt['notes'] ?? '').toString(),
+            'petId': (apt['pet_id'] ?? '').toString(),
+            'appointmentDate': appointmentDateTime,
+          };
+          
+          mappedAppointments.add(appointment);
+        } catch (e) {
+          print('⚠️ [CareScreen] Error mapping appointment: $e');
+          continue;
+        }
+      }
 
       setState(() {
         appointments = mappedAppointments;
