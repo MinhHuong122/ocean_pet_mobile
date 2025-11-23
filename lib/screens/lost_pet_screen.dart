@@ -2,6 +2,8 @@
 // Tích hợp Firebase LostPetService và legacy support
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/LostPetService.dart';
 import '../services/CloudinaryService.dart';
 
@@ -68,18 +70,73 @@ class _LostPetScreenState extends State<LostPetScreen> {
 
   Future<void> _loadFirebaseData() async {
     try {
-      final pets = await LostPetService.getLostPets();
+      final firebasePets = await LostPetService.getLostPets(status: 'active');
+      
+      // Map Firebase data to UI format
+      final mappedPets = <Map<String, dynamic>>[];
+      
+      for (var pet in firebasePets) {
+        try {
+          // Parse lost_date Timestamp to DateTime
+          DateTime lostDateTime;
+          if (pet['lost_date'] is Timestamp) {
+            lostDateTime = (pet['lost_date'] as Timestamp).toDate();
+          } else if (pet['lost_date'] is DateTime) {
+            lostDateTime = pet['lost_date'] as DateTime;
+          } else {
+            lostDateTime = DateTime.now();
+          }
+
+          // Map Firebase pet type to emoji
+          String emoji = '🐱';
+          final petType = (pet['pet_type'] ?? 'cat').toString().toLowerCase();
+          if (petType.contains('dog') || petType.contains('chó')) {
+            emoji = '🐕';
+          } else if (petType.contains('cat') || petType.contains('mèo')) {
+            emoji = '🐱';
+          } else if (petType.contains('bird') || petType.contains('chim')) {
+            emoji = '🐦';
+          }
+
+          final mappedPet = {
+            'id': (pet['id'] ?? '').toString(),
+            'name': (pet['pet_name'] ?? 'Unknown').toString(),
+            'type': (pet['pet_type'] ?? 'Unknown').toString(),
+            'location': (pet['lost_location'] ?? 'Unknown').toString(),
+            'lat': pet['latitude'] ?? 10.7769,
+            'lng': pet['longitude'] ?? 106.6955,
+            'date': DateFormat('yyyy-MM-dd').format(lostDateTime),
+            'description': (pet['distinguishing_features'] ?? '').toString(),
+            'phone': (pet['phone_number'] ?? '').toString(),
+            'image': emoji,
+            'userId': (pet['user_id'] ?? '').toString(),
+          };
+          
+          mappedPets.add(mappedPet);
+        } catch (e) {
+          print('⚠️ [LostPetScreen] Error mapping pet: $e');
+          continue;
+        }
+      }
+
       setState(() {
-        _lostPets = pets;
+        _lostPets = mappedPets;
       });
+      print('✅ [LostPetScreen] Loaded ${_lostPets.length} lost pets from Firebase');
     } catch (e) {
-      print('Lỗi tải dữ liệu: $e');
-      _showSnackBar('Lỗi tải dữ liệu: $e');
+      print('❌ [LostPetScreen] Lỗi tải dữ liệu: $e');
+      // Keep default appointments if load fails
     }
   }
 
   List<Map<String, dynamic>> get _myPosts {
-    // Simulate user's own posts
+    // If using Firebase, filter by current user ID from Firebase Auth
+    // Otherwise use local simulation
+    if (widget.useFirebase) {
+      // Firebase stores user_id, but we can't access it directly here
+      // Need to load separately - for now return empty
+      return [];
+    }
     return _lostPets.where((pet) => pet['userId'] == 'current_user').toList();
   }
 
