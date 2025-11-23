@@ -174,7 +174,9 @@ class _LostPetScreenState extends State<LostPetScreen> {
     }
   }
 
-  Future<void> _getCurrentLocationGPS(Function(double, double) onLocation) async {
+  Future<void> _getCurrentLocationGPS(Function(double, double) onLocation, Function(bool) onLoading) async {
+    onLoading(true);
+    
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -205,6 +207,8 @@ class _LostPetScreenState extends State<LostPetScreen> {
     } catch (e) {
       print('Location Error: $e');
       _showSnackBar('Không thể lấy vị trí.');
+    } finally {
+      onLoading(false);
     }
   }
 
@@ -430,42 +434,47 @@ class _LostPetScreenState extends State<LostPetScreen> {
                                   icon: const Icon(Icons.clear, color: Colors.grey),
                                   onPressed: () {
                                     locationController.clear();
+                                    setState(() => searchResults.clear());
                                   },
                                 ),
                               IconButton(
                                 icon: const Icon(Icons.my_location, color: Color(0xFF8B5CF6)),
-                                onPressed: () => _getCurrentLocationGPS((lat, lon) {
-                                  setState(() {
-                                    selectedLat = lat;
-                                    selectedLon = lon;
-                                  });
-                                  _reverseGeocodeLocation(lat, lon, (address) {
-                                    locationController.text = address;
-                                  });
-                                }),
+                                onPressed: () => _getCurrentLocationGPS(
+                                  (lat, lon) {
+                                    setState(() {
+                                      selectedLat = lat;
+                                      selectedLon = lon;
+                                    });
+                                    _reverseGeocodeLocation(lat, lon, (address) {
+                                      locationController.text = address;
+                                    });
+                                  },
+                                  (isLoading) => setState(() {}),
+                                ),
                               ),
                             ],
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.all(16),
                         ),
-                        onSubmitted: (query) => _searchLocationGeoapify(query, (results) {
-                          setState(() {
-                            searchResults = results;
-                          });
-                        }),
+                        onSubmitted: (query) => _searchLocationGeoapify(
+                          query,
+                          (results) => setState(() => searchResults = results),
+                        ),
                         textInputAction: TextInputAction.search,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Search results
+                    
+                    // Search results or loading
+                    // Note: Loading state can be tracked in parent if needed
                     if (searchResults.isNotEmpty)
                       Container(
                         decoration: BoxDecoration(
                           color: const Color(0xFFF6F6F6),
                           borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                          border: Border.all(
+                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
                           ),
                         ),
                         child: ListView.builder(
@@ -500,6 +509,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                           },
                         ),
                       ),
+                    
                     // Show coordinates if location selected
                     if (locationController.text.isNotEmpty && searchResults.isEmpty)
                       Container(
@@ -897,12 +907,12 @@ class _LostPetScreenState extends State<LostPetScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => _showPostForm(),
               backgroundColor: const Color(0xFF8B5CF6),
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add, color: Colors.white),
               label: Text(
                 'Đăng tin',
-                style: GoogleFonts.afacad(fontWeight: FontWeight.bold),
-              ),
-            )
+                style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.white),
+              ),            
+              )
           : null,
     );
   }
