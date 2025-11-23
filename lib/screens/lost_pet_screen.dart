@@ -1020,17 +1020,20 @@ class _LostPetScreenState extends State<LostPetScreen> {
                     itemCount: _displayedPets.length,
                     itemBuilder: (context, index) {
                       final pet = _displayedPets[index];
-                      final isMyPost = pet['userId'] == 'current_user';
+                      final isMyPost = pet['userId'] == _currentUserId;
 
                       return GestureDetector(
                         onTap: () => _showPetDetail(pet),
+                        onLongPress: isMyPost ? () => _showPostActions(pet) : null,
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[200]!),
+                            border: Border.all(
+                              color: isMyPost ? const Color(0xFF8B5CF6) : Colors.grey[200]!,
+                            ),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1079,56 +1082,6 @@ class _LostPetScreenState extends State<LostPetScreen> {
                                         color: Colors.red,
                                       ),
                                     ),
-                                    if (isMyPost)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 6),
-                                        child: Row(
-                                          children: [
-                                            SizedBox(
-                                              height: 28,
-                                              child: ElevatedButton.icon(
-                                                onPressed: () =>
-                                                    _showPostForm(editingPost: pet),
-                                                icon: const Icon(Icons.edit,
-                                                    size: 14),
-                                                label: const Text('Sửa',
-                                                    style: TextStyle(
-                                                        fontSize: 11)),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      const Color(0xFF8B5CF6),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            SizedBox(
-                                              height: 28,
-                                              child: ElevatedButton.icon(
-                                                onPressed: () {
-                                                  setState(() =>
-                                                      _lostPets.remove(pet));
-                                                  _showSnackBar(
-                                                      'Đã xóa tin');
-                                                },
-                                                icon: const Icon(Icons.delete,
-                                                    size: 14),
-                                                label: const Text('Xóa',
-                                                    style: TextStyle(
-                                                        fontSize: 11)),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
