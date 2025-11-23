@@ -39,9 +39,9 @@ service cloud.firestore {
     }
     
     // ==================== PETS COLLECTION ====================
-    // Users can only read/write their own pets
+    // Users can read all pets (to show pet list), but can only write their own
     match /pets/{petId} {
-      allow read: if isResourceOwner();
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
       allow update, delete: if isResourceOwner();
     }

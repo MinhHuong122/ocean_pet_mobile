@@ -29,13 +29,13 @@ android {
     ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
     }
 
     sourceSets {
@@ -44,7 +44,7 @@ android {
 
     defaultConfig {
         applicationId "com.oceanpet.ocean_pet_new"
-        minSdkVersion flutter.minSdkVersion  // Required for biometric authentication (Android 6.0+)
+        minSdkVersion 26  // Required for tflite_flutter plugin (Android 8.0+)
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

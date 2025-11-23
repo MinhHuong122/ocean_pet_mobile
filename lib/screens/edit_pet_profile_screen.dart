@@ -52,6 +52,12 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
     'Vẹt',
   ];
 
+  // Get only numeric age in years (for edit screen display)
+  String _getNumericAge(int? ageMonths) {
+    if (ageMonths == null) return '';
+    return (ageMonths ~/ 12).toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -68,7 +74,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
         text: pet['height'] != null ? pet['height'].toString() : '',
       );
       _ageController = TextEditingController(
-        text: pet['age'] != null ? pet['age'].toString() : '',
+        text: pet['age'] != null ? _getNumericAge(pet['age']) : '',
       );
       _notesController = TextEditingController(text: pet['notes'] ?? '');
       _gender = pet['gender'] ?? 'unknown';
@@ -143,14 +149,13 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
         
         // Tự động tính tuổi
         final now = DateTime.now();
-        int age = now.year - picked.year;
-        if (now.month < picked.month ||
-            (now.month == picked.month && now.day < picked.day)) {
-          age--;
+        int ageMonths = (now.year - picked.year) * 12 + (now.month - picked.month);
+        if (now.day < picked.day && ageMonths > 0) {
+          ageMonths--;
         }
         
-        if (age >= 0) {
-          _ageController.text = age.toString();
+        if (ageMonths >= 0) {
+          _ageController.text = _getNumericAge(ageMonths);
         } else {
           _ageController.text = '0';
         }
@@ -185,6 +190,16 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
 
       if (widget.existingPet != null) {
         // Update existing pet
+        // Calculate age from birth date
+        int ageMonths = 0;
+        if (_birthDate != null) {
+          final now = DateTime.now();
+          ageMonths = (now.year - _birthDate!.year) * 12 + (now.month - _birthDate!.month);
+          if (now.day < _birthDate!.day && ageMonths > 0) {
+            ageMonths--;
+          }
+        }
+
         await FirebaseService.updatePet(
           widget.existingPet!['id'],
           {
@@ -195,6 +210,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
                 : null,
             'gender': _gender,
             'birth_date': _birthDate,
+            'age': ageMonths,
             'weight': _weightController.text.trim().isNotEmpty
                 ? double.tryParse(_weightController.text.trim())
                 : null,

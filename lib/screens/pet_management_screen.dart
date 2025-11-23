@@ -135,6 +135,23 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
     );
   }
 
+  // Format age from months to years/months display
+  String _formatAgeDisplay(int? ageMonths) {
+    if (ageMonths == null) return 'Chưa rõ';
+    
+    if (ageMonths < 12) {
+      return '$ageMonths tháng';
+    } else {
+      int years = ageMonths ~/ 12;
+      int months = ageMonths % 12;
+      if (months == 0) {
+        return '$years năm';
+      } else {
+        return '$years năm $months tháng';
+      }
+    }
+  }
+
   Widget _buildPetCard(Map<String, dynamic> pet) {
     final String name = pet['name'] ?? 'Không có tên';
     final String type = pet['type'] ?? 'Không rõ loại';
@@ -147,7 +164,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
 
     String genderDisplay = gender == 'male' ? 'Đực' : gender == 'female' ? 'Cái' : 'Khác';
     IconData genderIcon = gender == 'male' ? Icons.male : gender == 'female' ? Icons.female : Icons.help_outline;
-    String ageDisplay = age != null ? '$age tháng' : 'Chưa rõ';
+    String ageDisplay = _formatAgeDisplay(age);
     String weightDisplay = weight != null ? '${weight}kg' : 'Chưa rõ';
     String heightDisplay = height != null ? '${height}cm' : 'Chưa rõ';
 

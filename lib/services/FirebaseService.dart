@@ -649,15 +649,22 @@ class FirebaseService {
     return _firestore
         .collection('notifications')
         .where('user_id', isEqualTo: userId)
-        .orderBy('created_at', descending: true)
-        .limit(50)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      final docs = snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
+      
+      // Sort and limit on client side to avoid composite index requirement
+      docs.sort((a, b) {
+        final aTime = (a['created_at'] as dynamic)?.toDate() ?? DateTime(2000);
+        final bTime = (b['created_at'] as dynamic)?.toDate() ?? DateTime(2000);
+        return bTime.compareTo(aTime); // descending
+      });
+      
+      return docs.take(50).toList();
     });
   }
 

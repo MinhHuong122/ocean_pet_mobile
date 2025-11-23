@@ -1,21 +1,26 @@
 // lib/screens/profile_detail_screen.dart
+// Firebase + Legacy Support
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../services/UserProfileService.dart';
+import '../services/CloudinaryService.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
-  final String userName;
-  final String userEmail;
+  final String? userName;
+  final String? userEmail;
   final String? avatarUrl;
-  final Function(String, String, String?) onUpdate;
+  final Function(String, String, String?)? onUpdate;
+  final bool useFirebase;
 
   const ProfileDetailScreen({
     super.key,
-    required this.userName,
-    required this.userEmail,
+    this.userName,
+    this.userEmail,
     this.avatarUrl,
-    required this.onUpdate,
+    this.onUpdate,
+    this.useFirebase = false,
   });
 
   @override
@@ -203,18 +208,28 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                           );
                           return;
                         }
-                        widget.onUpdate(
-                          nameController.text.trim(),
-                          emailController.text.trim(),
-                          localAvatarPath ?? widget.avatarUrl,
-                        );
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Đã cập nhật thông tin'),
-                            backgroundColor: Color(0xFF66BB6A),
-                          ),
-                        );
+                        if (widget.useFirebase) {
+                          // Firebase mode - will be implemented
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Firebase integration coming soon'),
+                            ),
+                          );
+                        } else {
+                          // Legacy mode
+                          widget.onUpdate?.call(
+                            nameController.text.trim(),
+                            emailController.text.trim(),
+                            localAvatarPath ?? widget.avatarUrl,
+                          );
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Đã cập nhật thông tin'),
+                              backgroundColor: Color(0xFF66BB6A),
+                            ),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF8E97FD),

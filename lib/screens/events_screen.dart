@@ -372,7 +372,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       ),
                       const SizedBox(width: 12),
                       _buildFilterChip(
-                        'Địa điểm',
+                        'Hình thức',
                         Icons.location_on,
                         () => _showLocationFilter(),
                       ),

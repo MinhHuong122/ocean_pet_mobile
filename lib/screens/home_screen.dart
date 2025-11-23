@@ -1,15 +1,20 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import './custom_bottom_nav.dart';
 import './ai_chat_screen.dart';
 import './contact_screen.dart';
 import './community_screen.dart';
 import './news_screen.dart';
-import './training_screen.dart';
 import './training_video_screen.dart';
 import './events_screen.dart';
 import './dating_screen.dart';
+import './translation_screen.dart';
+import './camera_screen.dart';
+import './lost_pet_screen.dart';
+import './pet_summary_screen.dart';
 import '../services/news_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,14 +37,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadTopNews() async {
     try {
       final news = await NewsService.getPetNews();
-      setState(() {
-        newsItems = news.take(3).toList();
-        isLoadingNews = false;
-      });
+      if (mounted) {
+        setState(() {
+          newsItems = news.take(3).toList();
+          isLoadingNews = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        isLoadingNews = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingNews = false;
+        });
+      }
       print('Error loading news: $e');
     }
   }
@@ -95,43 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Top cards (notes + calendar)
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEDE9FE),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // ...existing code for left card...
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 5,
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7ED),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            // ...existing code for right card...
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                // Pet Cards Carousel (Swipeable)
+                PetCarousel(),
 
                 const SizedBox(height: 18),
 
@@ -464,23 +438,35 @@ class _MenuIconRowState extends State<MenuIconRow> {
   final List<Map<String, dynamic>> menuItems = [
     {
       'label': 'Tất cả',
-      'icon': 'lib/res/drawables/setting/all.png',
+      'icon': Icons.apps,
     },
     {
       'label': 'Cộng đồng',
-      'icon': 'lib/res/drawables/setting/social.png',
+      'icon': Icons.groups,
     },
     {
       'label': 'Hẹn hò',
-      'icon': 'lib/res/drawables/setting/dating.png',
+      'icon': Icons.favorite,
     },
     {
       'label': 'Huấn luyện',
-      'icon': 'lib/res/drawables/setting/train.png',
+      'icon': Icons.school,
     },
     {
       'label': 'Sự kiện',
-      'icon': 'lib/res/drawables/setting/event.png',
+      'icon': Icons.event,
+    },
+    {
+      'label': 'Phiên dịch',
+      'icon': Icons.translate,
+    },
+    {
+      'label': 'Camera',
+      'icon': Icons.camera_alt,
+    },
+    {
+      'label': 'Thất lạc',
+      'icon': Icons.search,
     },
   ];
 
@@ -500,6 +486,7 @@ class _MenuIconRowState extends State<MenuIconRow> {
         scrollDirection: Axis.horizontal,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: icons,
         ),
       ),
@@ -549,11 +536,10 @@ class _MenuIconRowState extends State<MenuIconRow> {
                 //color: const Color(0xFF8B5CF6), width: selected ? 2 : 1),
               ),
               child: Center(
-                child: Image.asset(
-                  item['icon'],
-                  width: 28,
-                  height: 28,
-                  color: Color.fromARGB(255, 255, 255, 255),
+                child: Icon(
+                  item['icon'] as IconData,
+                  size: 28,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -574,6 +560,7 @@ class _MenuIconRowState extends State<MenuIconRow> {
   
   void _navigateToScreen(int index) {
     final context = this.context;
+    
     late Widget screen;
     
     switch (index) {
@@ -589,6 +576,15 @@ class _MenuIconRowState extends State<MenuIconRow> {
       case 4:
         screen = const EventsScreen();
         break;
+      case 5:
+        screen = const TranslationScreen();
+        break;
+      case 6:
+        screen = const CameraScreen();
+        break;
+      case 7:
+        screen = const LostPetScreen();
+        break;
       default:
         return;
     }
@@ -596,6 +592,305 @@ class _MenuIconRowState extends State<MenuIconRow> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => screen),
+    );
+  }
+}
+
+class PetCarousel extends StatefulWidget {
+  const PetCarousel({Key? key}) : super(key: key);
+
+  @override
+  State<PetCarousel> createState() => _PetCarouselState();
+}
+
+class _PetCarouselState extends State<PetCarousel> {
+  List<Map<String, dynamic>> pets = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPets();
+  }
+
+  Future<void> _loadPets() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('DEBUG: No authenticated user found');
+        setState(() {
+          isLoading = false;
+          errorMessage = 'Vui lòng đăng nhập để xem thú cưng';
+        });
+        return;
+      }
+
+      print('DEBUG: Loading pets for user: ${user.uid}');
+
+      final petsSnapshot = await FirebaseFirestore.instance
+          .collection('pets')
+          .where('user_id', isEqualTo: user.uid)
+          .get();
+
+      print('DEBUG: Found ${petsSnapshot.docs.length} pets');
+
+      setState(() {
+        pets = petsSnapshot.docs
+            .map((doc) {
+              print('DEBUG: Pet data: ${doc.data()}');
+              return {
+                'id': doc.id,
+                'name': doc['name'] ?? 'Pet',
+                'breed': doc['type'] ?? 'Unknown',
+                'age': doc['age'] ?? 0,
+                'profileImageUrl': doc['avatar_url'] ?? '',
+                'weight': doc['weight'] ?? 0,
+              };
+            })
+            .toList();
+        isLoading = false;
+        errorMessage = null;
+      });
+
+      print('DEBUG: Loaded ${pets.length} pets successfully');
+    } catch (e) {
+      print('ERROR loading pets: $e');
+      print('Error type: ${e.runtimeType}');
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Lỗi tải thú cưng: ${e.toString()}';
+      });
+    }
+  }
+
+  String _formatAge(int? ageMonths) {
+    if (ageMonths == null || ageMonths == 0) return 'Chưa rõ';
+    if (ageMonths < 12) {
+      return '$ageMonths tháng';
+    } else {
+      int years = ageMonths ~/ 12;
+      int months = ageMonths % 12;
+      if (months == 0) return '$years năm';
+      return '$years năm $months tháng';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return SizedBox(
+        height: 200,
+        child: Center(
+          child: CircularProgressIndicator(
+            color: const Color(0xFF8B5CF6),
+          ),
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.red[200]!),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[700]),
+            const SizedBox(height: 12),
+            Text(
+              'Lỗi',
+              style: GoogleFonts.afacad(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.red[900],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              errorMessage ?? 'Không thể tải dữ liệu thú cưng',
+              style: GoogleFonts.afacad(
+                fontSize: 12,
+                color: Colors.red[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _loadPets,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[700],
+              ),
+              child: Text(
+                'Thử lại',
+                style: GoogleFonts.afacad(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (pets.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEDE9FE),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.pets, size: 48, color: Color(0xFF8B5CF6)),
+            const SizedBox(height: 12),
+            Text(
+              'Chưa có thú cưng nào',
+              style: GoogleFonts.afacad(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Thêm thú cưng của bạn để theo dõi sức khỏe',
+              style: GoogleFonts.afacad(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final pastelColors = [
+      const Color(0xFFFFD9E9),  // Pastel pink
+      const Color(0xFFD9E9FF),  // Pastel blue
+      const Color(0xFFE9D9FF),  // Pastel purple
+      const Color(0xFFD9FFE9),  // Pastel green
+      const Color(0xFFFFE9D9),  // Pastel orange
+    ];
+
+    return SizedBox(
+      height: 200,
+      child: GridView.builder(
+        scrollDirection: Axis.horizontal,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 1,
+          childAspectRatio: 0.54,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: pets.length,
+        itemBuilder: (context, index) {
+          final pet = pets[index];
+          final bgColor = pastelColors[index % pastelColors.length];
+
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PetSummaryScreen(
+                    petId: pet['id'],
+                    petName: pet['name'],
+                    petBreed: pet['breed'],
+                    ageMonths: pet['age'],
+                    profileImageUrl: pet['profileImageUrl'].toString().isNotEmpty
+                        ? pet['profileImageUrl']
+                        : null,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Pet Avatar
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.7),
+                        image: pet['profileImageUrl'].toString().isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(pet['profileImageUrl']),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: pet['profileImageUrl'].toString().isEmpty
+                          ? const Icon(Icons.pets, size: 35, color: Colors.grey)
+                          : null,
+                    ),
+                    const SizedBox(height: 10),
+                    // Pet Name
+                    Text(
+                      pet['name'],
+                      style: GoogleFonts.afacad(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                    // Pet Breed
+                    Text(
+                      pet['breed'],
+                      style: GoogleFonts.afacad(
+                        fontSize: 11,
+                        color: Colors.grey[700],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    // Pet Age
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _formatAge(pet['age']),
+                        style: GoogleFonts.afacad(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

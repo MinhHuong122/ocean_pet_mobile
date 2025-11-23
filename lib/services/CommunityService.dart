@@ -218,7 +218,7 @@ class CommunityService {
         return newComment.id;
       });
 
-      return commentRef as String;
+      return commentRef;
     } catch (e) {
       print('Error adding comment: $e');
       rethrow;

@@ -7,7 +7,9 @@ import 'package:ocean_pet/screens/quick_login_screen.dart';
 import 'package:ocean_pet/screens/home_screen.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/QuickLoginService.dart';
+import 'package:ocean_pet/services/fcm_notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:http/http.dart' as http;
 
@@ -32,6 +34,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Khởi tạo FCM Notification Service
+  final fcmService = FCMNotificationService();
+  await fcmService.initialize();
+
+  // Lấy FCM Token
+  String? fcmToken = await fcmService.getFCMToken();
+  print("📱 FCM Token: $fcmToken");
 
   // Kiểm tra kết nối backend tự động
   await checkBackendConnection();
@@ -107,6 +117,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _checkAppState();
+    _setupFCMListeners();
   }
 
   Future<void> _checkAppState() async {
@@ -129,6 +140,41 @@ class _AuthWrapperState extends State<AuthWrapper> {
         _isLoading = false;
       });
     }
+  }
+
+  /// Thiết lập FCM listeners
+  void _setupFCMListeners() {
+    final fcmService = FCMNotificationService();
+
+    // Lắng nghe thông báo khi app đang mở (foreground)
+    fcmService.listenForForegroundMessages((RemoteMessage message) {
+      print("📱 Received foreground message: ${message.notification?.title}");
+      // Có thể thêm action dựa vào loại thông báo
+      _handleNotificationMessage(message);
+    });
+
+    // Lắng nghe khi người dùng nhấn vào thông báo
+    fcmService.listenForMessageOpenedApp((RemoteMessage message) {
+      print("👆 User tapped notification: ${message.data}");
+      _handleNotificationTap(message);
+    });
+  }
+
+  /// Xử lý thông báo dựa vào loại
+  void _handleNotificationMessage(RemoteMessage message) {
+    final notificationType = message.data['type'] ?? 'default';
+    
+    print("🔔 Processing notification type: $notificationType");
+    // Có thể thêm các hành động cụ thể ở đây
+  }
+
+  /// Xử lý khi người dùng nhấn vào thông báo
+  void _handleNotificationTap(RemoteMessage message) {
+    final screen = message.data['screen'] ?? 'home';
+    
+    print("📍 Navigating to: $screen");
+    // Điều hướng đến màn hình tương ứng
+    // Navigator.pushNamed(context, screen);
   }
 
   @override

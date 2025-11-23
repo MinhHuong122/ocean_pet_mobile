@@ -226,7 +226,7 @@ class TrainingService {
 
           // Get current video data
           final videoData = await transaction.get(videoRef);
-          final data = videoData.data() as Map<String, dynamic>?;
+          final data = videoData.data();
           final currentRating = (data?['rating'] ?? 0.0).toDouble();
           final ratingCount = (data?['rating_count'] ?? 0) as int;
 

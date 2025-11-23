@@ -30,7 +30,6 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _savedEmail;
-  bool _isBiometricEnabled = false;
   bool _isBiometricAvailable = false;
   List<BiometricType> _availableBiometrics = [];
 
@@ -90,7 +89,6 @@ class _QuickLoginScreenState extends State<QuickLoginScreen> {
 
       setState(() {
         _savedEmail = email;
-        _isBiometricEnabled = biometricEnabled;
         _isBiometricAvailable = biometricAvailable;
         _availableBiometrics = availableBiometrics;
       });

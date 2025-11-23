@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ocean_pet/res/R.dart';
-import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/FirebaseService.dart';
 import 'package:ocean_pet/screens/choose_pet_screen.dart';
 import 'package:ocean_pet/screens/home_screen.dart';
@@ -13,7 +12,6 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
-  String? _userName;
   bool _isLoading = true;
   bool _hasPets = false;
 
@@ -29,15 +27,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       final hasPets = await FirebaseService.userHasPets();
       
       // Lấy thông tin user
-      final userInfo = await AuthService.getUserInfo();
       
       setState(() {
         _hasPets = hasPets;
-        if (userInfo['success'] == true && userInfo['user'] != null) {
-          _userName = userInfo['user']['name'] ?? 'Bạn';
-        } else {
-          _userName = 'Bạn';
-        }
         _isLoading = false;
       });
 
@@ -53,7 +45,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     } catch (e) {
       print('Error checking user status: $e');
       setState(() {
-        _userName = 'Bạn';
         _isLoading = false;
         _hasPets = false;
       });

@@ -86,9 +86,12 @@ class _NewsScreenState extends State<NewsScreen> {
         backgroundColor: Colors.white,
         elevation: 1,
         toolbarHeight: 70,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         title: Padding(
           padding: const EdgeInsets.only(top: 8.0),
