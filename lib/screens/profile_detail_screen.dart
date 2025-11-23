@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/UserProfileService.dart';
-import '../services/CloudinaryService.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
   final String? userName;
@@ -29,7 +28,6 @@ class ProfileDetailScreen extends StatefulWidget {
 
 class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   late TextEditingController nameController;
-  late TextEditingController emailController;
   late TextEditingController phoneController;
   late TextEditingController addressController;
   String? localAvatarPath;
@@ -39,7 +37,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   void initState() {
     super.initState();
     nameController = TextEditingController(text: widget.userName);
-    emailController = TextEditingController(text: widget.userEmail);
     phoneController = TextEditingController();
     addressController = TextEditingController();
   }
@@ -47,7 +44,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   @override
   void dispose() {
     nameController.dispose();
-    emailController.dispose();
     phoneController.dispose();
     addressController.dispose();
     super.dispose();
@@ -172,11 +168,42 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     icon: Icons.person,
                   ),
                   const SizedBox(height: 20),
-                  _buildTextField(
-                    controller: emailController,
-                    label: 'Email',
-                    icon: Icons.email,
-                    keyboardType: TextInputType.emailAddress,
+                  // Email field - display only (not editable)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Email',
+                        style: GoogleFonts.afacad(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF22223B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.email, color: Color(0xFF8E97FD)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                widget.userEmail ?? 'Chưa có email',
+                                style: GoogleFonts.afacad(
+                                  fontSize: 16,
+                                  color: const Color(0xFF666666),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -229,7 +256,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                               // Call onUpdate callback to update parent screen
                               widget.onUpdate?.call(
                                 nameController.text.trim(),
-                                emailController.text.trim(),
+                                widget.userEmail ?? '',
                                 localAvatarPath ?? widget.avatarUrl,
                               );
                               
@@ -256,7 +283,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                           // Legacy mode
                           widget.onUpdate?.call(
                             nameController.text.trim(),
-                            emailController.text.trim(),
+                            widget.userEmail ?? '',
                             localAvatarPath ?? widget.avatarUrl,
                           );
                           Navigator.pop(context);
