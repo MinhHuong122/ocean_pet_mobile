@@ -65,7 +65,7 @@ class NotificationService {
               enableVibration: true,
               enableLights: true,
               color: const Color(0xFF8B5CF6),
-              sound: const RawResourceAndroidNotificationSound('alarm'),
+              sound: const RawResourceAndroidNotificationSound('arlam'),
             ),
             iOS: const DarwinNotificationDetails(
               presentAlert: true,
@@ -133,7 +133,7 @@ class NotificationService {
             enableVibration: true,
             enableLights: true,
             color: const Color(0xFF8B5CF6),
-            sound: const RawResourceAndroidNotificationSound('alarm'),
+            sound: const RawResourceAndroidNotificationSound('arlam'),
             ledColor: const Color(0xFF8B5CF6),
             ledOnMs: 1000,
             ledOffMs: 1000,
@@ -204,7 +204,7 @@ class NotificationService {
             enableVibration: true,
             enableLights: true,
             color: const Color(0xFF8B5CF6),
-            sound: const RawResourceAndroidNotificationSound('alarm'),
+            sound: const RawResourceAndroidNotificationSound('arlam'),
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
