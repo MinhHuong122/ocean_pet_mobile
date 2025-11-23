@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'dart:convert';
 import '../services/LostPetService.dart';
@@ -23,59 +24,29 @@ class LostPetScreen extends StatefulWidget {
 
 class _LostPetScreenState extends State<LostPetScreen> {
   int _selectedTab = 0; // 0: Browse, 1: My Posts
-  List<Map<String, dynamic>> _lostPets = [
-    {
-      'id': '1',
-      'name': 'Mèo vàng Mimi',
-      'type': 'Mèo',
-      'location': 'Quận 1, TP.HCM',
-      'lat': 10.7769,
-      'lng': 106.6955,
-      'date': '2024-11-20',
-      'description': 'Mèo vàng mắt xanh, rất hiền. Mất từ hôm qua.',
-      'phone': '0901234567',
-      'image': '🐱',
-      'userId': 'user1',
-    },
-    {
-      'id': '2',
-      'name': 'Chó Pug Coco',
-      'type': 'Chó',
-      'location': 'Quận 3, TP.HCM',
-      'lat': 10.7892,
-      'lng': 106.7041,
-      'date': '2024-11-19',
-      'description': 'Chó Pug màu đen, đeo vòng cổ đỏ. Rất thân thiện.',
-      'phone': '0912345678',
-      'image': '🐕',
-      'userId': 'user2',
-    },
-    {
-      'id': '3',
-      'name': 'Chó Husky Max',
-      'type': 'Chó',
-      'location': 'Quận 7, TP.HCM',
-      'lat': 10.7313,
-      'lng': 106.7201,
-      'date': '2024-11-18',
-      'description': 'Chó Husky trắng xám. Mất tại công viên Tao Đàn.',
-      'phone': '0923456789',
-      'image': '🐕‍🦺',
-      'userId': 'user3',
-    },
-  ];
+  List<Map<String, dynamic>> _lostPets = [];
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    if (widget.useFirebase) {
-      _loadFirebaseData();
-    }
+    _loadCurrentUser();
+    _loadFirebaseData();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    setState(() {
+      _currentUserId = user?.uid;
+    });
   }
 
   Future<void> _loadFirebaseData() async {
     try {
+      print('📥 [LostPetScreen] Loading lost pets from Firebase...');
+      
       final firebasePets = await LostPetService.getLostPets(status: 'active');
+      print('✅ [LostPetScreen] Received ${firebasePets.length} pets from Firebase');
       
       // Map Firebase data to UI format
       final mappedPets = <Map<String, dynamic>>[];
@@ -125,11 +96,12 @@ class _LostPetScreenState extends State<LostPetScreen> {
             'date': DateFormat('yyyy-MM-dd').format(lostDateTime),
             'description': (pet['distinguishing_features'] ?? '').toString(),
             'phone': (pet['phone_number'] ?? '').toString(),
-            'image': emoji,
+            'image': pet['image_url'] ?? emoji, // Use Cloudinary URL if available
             'userId': (pet['user_id'] ?? '').toString(),
           };
           
           mappedPets.add(mappedPet);
+          print('✅ [LostPetScreen] Processed: ${pet['pet_name']}');
         } catch (e) {
           print('⚠️ [LostPetScreen] Error mapping pet: $e');
           continue;
@@ -139,22 +111,18 @@ class _LostPetScreenState extends State<LostPetScreen> {
       setState(() {
         _lostPets = mappedPets;
       });
-      print('✅ [LostPetScreen] Loaded ${_lostPets.length} lost pets from Firebase');
+      print('📊 [LostPetScreen] Loaded ${_lostPets.length} lost pets');
     } catch (e) {
-      print('❌ [LostPetScreen] Lỗi tải dữ liệu: $e');
-      // Keep default appointments if load fails
+      print('❌ [LostPetScreen] Error loading Firebase data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi tải dữ liệu: $e')),
+      );
     }
   }
 
   List<Map<String, dynamic>> get _myPosts {
-    // If using Firebase, filter by current user ID from Firebase Auth
-    // Otherwise use local simulation
-    if (widget.useFirebase) {
-      // Firebase stores user_id, but we can't access it directly here
-      // Need to load separately - for now return empty
-      return [];
-    }
-    return _lostPets.where((pet) => pet['userId'] == 'current_user').toList();
+    // Filter by current user ID
+    return _lostPets.where((pet) => pet['userId'] == _currentUserId).toList();
   }
 
   List<Map<String, dynamic>> get _displayedPets {
@@ -595,93 +563,65 @@ class _LostPetScreenState extends State<LostPetScreen> {
                             final description = descriptionController.text.trim();
                             final phone = phoneController.text.trim();
                             
-                            if (widget.useFirebase) {
-                              try {
-                                if (isEditing) {
-                                  // Update in Firebase
-                                  print('📝 [LostPetScreen] Updating lost pet post: ${editingPost['id']}');
-                                  await LostPetService.updateLostPetPost(
-                                    editingPost['id'],
-                                    {
-                                      'pet_name': name,
-                                      'pet_type': type,
-                                      'lost_location': location,
-                                      'distinguishing_features': description,
-                                      'phone_number': phone,
-                                    },
-                                  );
-                                  print('✅ [LostPetScreen] Lost pet post updated successfully');
-                                } else {
-                                  // Create new post in Firebase
-                                  print('📝 [LostPetScreen] Creating new lost pet post');
-                                  String imageUrl = '';
-                                  
-                                  // Upload image if selected
-                                  if (selectedImage != null) {
-                                    try {
-                                      print('📸 [LostPetScreen] Uploading image to Cloudinary...');
-                                      imageUrl = await CloudinaryService.uploadImage(
-                                        selectedImage!,
-                                        'lost_pets',
-                                        fileName: '${type}_${DateTime.now().millisecondsSinceEpoch}',
-                                      );
-                                      print('✅ [LostPetScreen] Image uploaded: $imageUrl');
-                                    } catch (e) {
-                                      print('⚠️ [LostPetScreen] Image upload failed: $e');
-                                      // Continue without image
-                                    }
-                                  }
-                                  
-                                  final postId = await LostPetService.createLostPetPost(
-                                    petName: name,
-                                    petType: type,
-                                    breed: 'Unknown',
-                                    color: 'Unknown',
-                                    distinguishingFeatures: description,
-                                    imageUrl: imageUrl,
-                                    lostDate: DateTime.now(),
-                                    lostLocation: location,
-                                    latitude: 10.7769,
-                                    longitude: 106.6955,
-                                    phoneNumber: phone,
-                                  );
-                                  print('✅ [LostPetScreen] Lost pet post created: $postId');
-                                }
-                                if (mounted) {
-                                  Navigator.pop(context);
-                                  await _loadFirebaseData();
-                                  _showSnackBar(isEditing ? '✅ Cập nhật thành công' : '✅ Đăng tin thành công');
-                                }
-                              } catch (e) {
-                                print('❌ [LostPetScreen] Error: $e');
-                                _showSnackBar('❌ Lỗi: $e');
-                              }
-                            } else {
-                              // Legacy mode - update local list
+                            try {
                               if (isEditing) {
-                                editingPost['name'] = name;
-                                editingPost['type'] = type;
-                                editingPost['location'] = location;
-                                editingPost['description'] = description;
-                                editingPost['phone'] = phone;
+                                // Update in Firebase
+                                print('📝 [LostPetScreen] Updating lost pet post: ${editingPost['id']}');
+                                await LostPetService.updateLostPetPost(
+                                  editingPost['id'],
+                                  {
+                                    'pet_name': name,
+                                    'pet_type': type,
+                                    'lost_location': location,
+                                    'distinguishing_features': description,
+                                    'phone_number': phone,
+                                  },
+                                );
+                                print('✅ [LostPetScreen] Lost pet post updated successfully');
                               } else {
-                                _lostPets.add({
-                                  'id': DateTime.now().toString(),
-                                  'name': name,
-                                  'type': type,
-                                  'location': location,
-                                  'description': description,
-                                  'phone': phone,
-                                  'date': DateTime.now().toString(),
-                                  'image': type == 'Chó' ? '🐕' : '🐱',
-                                  'userId': 'current_user',
-                                  'lat': 10.7769,
-                                  'lng': 106.6955,
-                                });
+                                // Create new post in Firebase
+                                print('📝 [LostPetScreen] Creating new lost pet post');
+                                String imageUrl = '';
+                                
+                                // Upload image if selected
+                                if (selectedImage != null) {
+                                  try {
+                                    print('📸 [LostPetScreen] Uploading image to Cloudinary...');
+                                    imageUrl = await CloudinaryService.uploadImage(
+                                      selectedImage!,
+                                      'lost_pets',
+                                      fileName: '${type}_${DateTime.now().millisecondsSinceEpoch}',
+                                    );
+                                    print('✅ [LostPetScreen] Image uploaded: $imageUrl');
+                                  } catch (e) {
+                                    print('⚠️ [LostPetScreen] Image upload failed: $e');
+                                    // Continue without image
+                                  }
+                                }
+                                
+                                final postId = await LostPetService.createLostPetPost(
+                                  petName: name,
+                                  petType: type,
+                                  breed: 'Unknown',
+                                  color: 'Unknown',
+                                  distinguishingFeatures: description,
+                                  imageUrl: imageUrl,
+                                  lostDate: DateTime.now(),
+                                  lostLocation: location,
+                                  latitude: selectedLat,
+                                  longitude: selectedLon,
+                                  phoneNumber: phone,
+                                );
+                                print('✅ [LostPetScreen] Lost pet post created: $postId');
                               }
-                              setState(() {});
-                              Navigator.pop(context);
-                              _showSnackBar(isEditing ? '✅ Cập nhật thành công' : '✅ Đăng tin thành công');
+                              if (mounted) {
+                                Navigator.pop(context);
+                                await _loadFirebaseData();
+                                _showSnackBar(isEditing ? '✅ Cập nhật thành công' : '✅ Đăng tin thành công');
+                              }
+                            } catch (e) {
+                              print('❌ [LostPetScreen] Error: $e');
+                              _showSnackBar('❌ Lỗi: $e');
                             }
                           }
                         },
