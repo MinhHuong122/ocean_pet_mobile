@@ -1031,9 +1031,7 @@ class _LostPetScreenState extends State<LostPetScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isMyPost ? const Color(0xFF8B5CF6) : Colors.grey[200]!,
-                            ),
+                            border: Border.all(color: Colors.grey[200]!),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
