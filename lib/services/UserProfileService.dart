@@ -45,25 +45,29 @@ class UserProfileService {
 
       final data = <String, dynamic>{};
 
-      if (name != null && name.isNotEmpty) data['name'] = name;
-      if (phoneNumber != null && phoneNumber.isNotEmpty) data['phone_number'] = phoneNumber;
-      if (address != null && address.isNotEmpty) data['address'] = address;
-      if (bio != null && bio.isNotEmpty) data['bio'] = bio;
-      if (avatarUrl != null && avatarUrl.isNotEmpty) data['avatar_url'] = avatarUrl;
-      if (gender != null && gender.isNotEmpty) data['gender'] = gender;
+      // Accept empty strings from trim() as valid updates
+      if (name != null) data['name'] = name;
+      if (phoneNumber != null) data['phone_number'] = phoneNumber;
+      if (address != null) data['address'] = address;
+      if (bio != null) data['bio'] = bio;
+      if (avatarUrl != null) data['avatar_url'] = avatarUrl;
+      if (gender != null) data['gender'] = gender;
       if (dateOfBirth != null) data['date_of_birth'] = Timestamp.fromDate(dateOfBirth);
-      if (city != null && city.isNotEmpty) data['city'] = city;
-      if (district != null && district.isNotEmpty) data['district'] = district;
-      if (ward != null && ward.isNotEmpty) data['ward'] = ward;
+      if (city != null) data['city'] = city;
+      if (district != null) data['district'] = district;
+      if (ward != null) data['ward'] = ward;
 
       data['updated_at'] = FieldValue.serverTimestamp();
 
       print('📤 [UserProfileService] Sending data: $data');
       print('📍 [UserProfileService] Firestore path: users/$userId');
       
-      await _firestore.collection('users').doc(userId).update(data);
-      
-      print('✅ [UserProfileService] Update successful!');
+      if (data.length > 1) { // More than just updated_at
+        await _firestore.collection('users').doc(userId).update(data);
+        print('✅ [UserProfileService] Update successful!');
+      } else {
+        print('⚠️ [UserProfileService] No data to update (only updated_at)');
+      }
     } catch (e) {
       print('❌ [UserProfileService] Error updating user profile: $e');
       print('❌ Stack trace: ${StackTrace.current}');
@@ -207,7 +211,7 @@ class UserProfileService {
 
       return snapshot.docs
           .map((doc) => {
-                ...doc.data() as Map<String, dynamic>,
+                ...doc.data(),
                 'id': doc.id
               })
           .toList();
