@@ -285,6 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => ProfileDetailScreen(
+                          useFirebase: true,
                           userName: userName,
                           userEmail: userEmail,
                           avatarUrl: avatarUrl,
@@ -294,6 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               userEmail = newEmail;
                               avatarUrl = newAvatar;
                             });
+                            _loadUserInfo();
                           },
                         ),
                       ),
