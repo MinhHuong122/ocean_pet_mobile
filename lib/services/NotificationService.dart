@@ -169,51 +169,6 @@ class NotificationService {
     }
   }
 
-  static Future<void> showTestNotification() async {
-    try {
-      print('📢 [NotificationService] Sending immediate test notification...');
-      print('   Title: 🔔 Thử nghiệm thông báo');
-      print('   Body: Đây là thông báo thử nghiệm từ ứng dụng Pet Care');
-      print('   Sound: arlam.mp3 (alarm)');
-      print('   Vibration: Enabled');
-      print('   LED: Purple (0xFF8B5CF6)');
-      
-      await _notificationsPlugin.show(
-        0,
-        '🔔 Thử nghiệm thông báo',
-        'Đây là thông báo thử nghiệm từ ứng dụng Pet Care - Nhấn để kiểm tra',
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'test_channel',
-            'Thử nghiệm',
-            channelDescription: 'Thông báo thử nghiệm',
-            importance: Importance.max,
-            priority: Priority.high,
-            enableVibration: true,
-            enableLights: true,
-            color: const Color(0xFF8B5CF6),
-            sound: const RawResourceAndroidNotificationSound('arlam'),
-            ledColor: const Color(0xFF8B5CF6),
-            ledOnMs: 1000,
-            ledOffMs: 1000,
-            fullScreenIntent: true,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-            sound: 'alarm.caf',
-          ),
-        ),
-      );
-      print('✅ [NotificationService] Test notification sent successfully!');
-      print('   You should see notification, hear alarm sound, feel vibration, and see LED blink');
-    } catch (e) {
-      print('❌ [NotificationService] Error sending test notification: $e');
-      print('   Details: ${e.toString()}');
-    }
-  }
-
   static void _onNotificationTapped(NotificationResponse notificationResponse) {
     print('✅ [NotificationService] Notification tapped: ${notificationResponse.payload}');
     // Handle notification tap
