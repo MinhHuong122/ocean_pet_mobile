@@ -6,8 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import '../services/FirebaseService.dart';
+import '../services/AppointmentService.dart';
 
 class AppointmentDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? appointment;
@@ -991,7 +993,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     );
   }
 
-  void _saveAppointment() {
+  void _saveAppointment() async {
     if (_titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1005,32 +1007,126 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       return;
     }
 
-    final appointment = {
-      'id': widget.appointment?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      'title': _titleController.text,
-      'date': DateFormat('dd/MM/yyyy').format(_selectedDate),
-      'time': _selectedTime.format(context),
-      'location': _locationController.text,
-      'note': _noteController.text,
-      'icon': widget.appointment?['icon'] ?? Icons.medical_services,
-      'color': widget.appointment?['color'] ?? const Color(0xFF8E97FD),
-      'petId': _selectedPetId,
-      'petName': _selectedPetName,
-      'dateTime': DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        _selectedTime.hour,
-        _selectedTime.minute,
-      ).toIso8601String(),
-      // New fields for recurring and reminder
-      'isRecurring': _isRecurring,
-      'recurringCycle': _recurringCycle,
-      'reminderTime': _reminderTime,
-    };
+    try {
+      // Show loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đang lưu lịch hẹn...',
+              style: GoogleFonts.afacad(),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
 
-    widget.onSave(appointment);
-    Navigator.pop(context);
+      // Save or update in Firebase
+      if (widget.appointment != null && widget.appointment!['id'] != null) {
+        // Update existing appointment
+        print('📝 Updating appointment: ${widget.appointment!['id']}');
+        await AppointmentService.updateAppointment(
+          widget.appointment!['id'],
+          {
+            'type': _titleController.text,
+            'location': _locationController.text,
+            'notes': _noteController.text,
+            'appointment_date': Timestamp.fromDate(DateTime(
+              _selectedDate.year,
+              _selectedDate.month,
+              _selectedDate.day,
+              _selectedTime.hour,
+              _selectedTime.minute,
+            )),
+            'reminder_time': _reminderTime,
+            'is_recurring': _isRecurring,
+            'recurring_cycle': _recurringCycle,
+          },
+        );
+        print('✅ Appointment updated successfully');
+      } else {
+        // Create new appointment
+        if (_selectedPetId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Vui lòng chọn thú cưng',
+                style: GoogleFonts.afacad(),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        print('📝 Creating new appointment');
+        final appointmentId = await AppointmentService.createAppointment(
+          petId: _selectedPetId!,
+          type: _titleController.text,
+          appointmentDate: _selectedDate,
+          appointmentTime: _selectedTime,
+          location: _locationController.text,
+          notes: _noteController.text,
+          reminderTime: _reminderTime,
+          isRecurring: _isRecurring,
+          recurringCycle: _recurringCycle,
+        );
+        print('✅ Appointment created: $appointmentId');
+      }
+
+      // Prepare appointment data for callback
+      final appointment = {
+        'id': widget.appointment?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        'title': _titleController.text,
+        'date': DateFormat('dd/MM/yyyy').format(_selectedDate),
+        'time': _selectedTime.format(context),
+        'location': _locationController.text,
+        'note': _noteController.text,
+        'icon': widget.appointment?['icon'] ?? Icons.medical_services,
+        'color': widget.appointment?['color'] ?? const Color(0xFF8E97FD),
+        'petId': _selectedPetId,
+        'petName': _selectedPetName,
+        'dateTime': DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          _selectedTime.hour,
+          _selectedTime.minute,
+        ).toIso8601String(),
+        'isRecurring': _isRecurring,
+        'recurringCycle': _recurringCycle,
+        'reminderTime': _reminderTime,
+      };
+
+      widget.onSave(appointment);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đã lưu lịch hẹn vào Firebase',
+              style: GoogleFonts.afacad(),
+            ),
+            backgroundColor: const Color(0xFF66BB6A),
+          ),
+        );
+      }
+      
+      Navigator.pop(context);
+    } catch (e) {
+      print('❌ Error saving appointment: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Lỗi lưu lịch hẹn: ${e.toString()}',
+              style: GoogleFonts.afacad(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildReminderButton(String label, String value) {
