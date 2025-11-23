@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/AppointmentService.dart';
+import '../services/NotificationService.dart';
 import './custom_bottom_nav.dart';
 import './appointment_detail_screen.dart';
 import './nutrition_screen.dart';
@@ -701,6 +702,10 @@ class _CareScreenState extends State<CareScreen> {
   Future<void> _deleteAppointment(Map<String, dynamic> appointment) async {
     try {
       print('🗑️ [CareScreen] Deleting appointment: ${appointment['id']}');
+      
+      // Cancel notification reminder
+      final appointmentId = int.tryParse(appointment['id']) ?? appointment['id'].hashCode.abs();
+      await NotificationService.cancelAppointmentReminder(appointmentId);
       
       // Delete from Firebase
       await AppointmentService.deleteAppointment(appointment['id']);

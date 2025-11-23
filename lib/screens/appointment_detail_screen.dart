@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import '../services/FirebaseService.dart';
 import '../services/AppointmentService.dart';
+import '../services/NotificationService.dart';
 
 class AppointmentDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? appointment;
@@ -1098,13 +1099,29 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         'reminderTime': _reminderTime,
       };
 
+      // Schedule appointment reminder notification
+      final appointmentId = int.tryParse(appointment['id']) ?? appointment['id'].hashCode.abs();
+      await NotificationService.scheduleAppointmentReminder(
+        appointmentId: appointmentId,
+        appointmentTitle: _titleController.text,
+        appointmentTime: _selectedTime.format(context),
+        appointmentDateTime: DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          _selectedTime.hour,
+          _selectedTime.minute,
+        ),
+        reminderTime: _reminderTime,
+      );
+
       widget.onSave(appointment);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Đã lưu lịch hẹn vào Firebase',
+              'Đã lưu lịch hẹn + nhắc nhở',
               style: GoogleFonts.afacad(),
             ),
             backgroundColor: const Color(0xFF66BB6A),

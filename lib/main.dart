@@ -8,6 +8,7 @@ import 'package:ocean_pet/screens/home_screen.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/QuickLoginService.dart';
 import 'package:ocean_pet/services/fcm_notification_service.dart';
+import 'package:ocean_pet/services/NotificationService.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
@@ -34,6 +35,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Khởi tạo Notification Service
+  await NotificationService.initialize();
 
   // Khởi tạo FCM Notification Service
   final fcmService = FCMNotificationService();
