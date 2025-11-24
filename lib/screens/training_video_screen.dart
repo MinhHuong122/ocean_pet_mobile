@@ -372,6 +372,43 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
     });
   }
 
+  List<Map<String, dynamic>> _getRecommendedVideos() {
+    if (watchedVideoIds.isEmpty) {
+      // If no videos watched yet, recommend popular beginner videos
+      return allVideos
+          .where((v) => v['level'] == 'Cơ bản')
+          .toList()
+          ..sort((a, b) => (b['rating'] as double).compareTo(a['rating'] as double));
+    }
+
+    // Get next level videos based on watched history
+    final watchedLevels = <String>{};
+    for (var id in watchedVideoIds) {
+      final video = allVideos.firstWhere(
+        (v) => v['id'] == id,
+        orElse: () => <String, dynamic>{},
+      );
+      if (video.isNotEmpty) watchedLevels.add(video['level'] as String);
+    }
+
+    // Recommend next level
+    String recommendedLevel = 'Cơ bản';
+    if (watchedLevels.contains('Nâng cao')) {
+      recommendedLevel = 'Nâng cao';
+    } else if (watchedLevels.contains('Trung cấp')) {
+      recommendedLevel = 'Nâng cao';
+    } else if (watchedLevels.contains('Cơ bản')) {
+      recommendedLevel = 'Trung cấp';
+    }
+
+    return allVideos
+        .where((v) =>
+            v['level'] == recommendedLevel &&
+            !watchedVideoIds.contains(v['id']))
+        .toList()
+      ..sort((a, b) => (b['rating'] as double).compareTo(a['rating'] as double));
+  }
+
   void _toggleFavorite(String videoId) async {
     setState(() {
       if (favoriteVideoIds.contains(videoId)) {
@@ -434,6 +471,75 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
       ),
       body: Column(
         children: [
+          // Learning Progress Header
+          if (watchedVideoIds.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Tiến độ học tập',
+                        style: GoogleFonts.afacad(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${((watchedVideoIds.length / allVideos.length.clamp(1, double.infinity)) * 100).toStringAsFixed(0)}%',
+                          style: GoogleFonts.afacad(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: watchedVideoIds.length / allVideos.length.clamp(1, double.infinity),
+                      minHeight: 8,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      valueColor: const AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Đã xem ${watchedVideoIds.length} / ${allVideos.length} video',
+                    style: GoogleFonts.afacad(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
           // Search bar
           Padding(
             padding: const EdgeInsets.all(16),
@@ -498,6 +604,125 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           ),
           
           const SizedBox(height: 8),
+          
+          // Recommended videos section
+          if (_getRecommendedVideos().isNotEmpty && watchedVideoIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.lightbulb,
+                        color: Color(0xFFFFB74D),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Gợi ý cho bạn',
+                        style: GoogleFonts.afacad(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF22223B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 160,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _getRecommendedVideos().take(5).length,
+                      itemBuilder: (context, index) {
+                        final video = _getRecommendedVideos()[index];
+                        return Container(
+                          width: 140,
+                          margin: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    _incrementViews(video['id']);
+                                    _saveWatchedVideo(video['id']);
+                                    _openYoutubePlayer(
+                                        video['url'], video['title']);
+                                  },
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Image.network(
+                                        getYoutubeThumbnail(
+                                          extractYoutubeId(video['url']) ??
+                                              '',
+                                          quality: 'maxresdefault',
+                                        ),
+                                        width: 140,
+                                        height: 90,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            width: 140,
+                                            height: 90,
+                                            decoration: BoxDecoration(
+                                              gradient: const LinearGradient(
+                                                colors: [
+                                                  Color(0xFFAB47BC),
+                                                  Color(0xFF8E24AA)
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const Icon(
+                                        Icons.play_arrow,
+                                        color: Colors.white,
+                                        size: 32,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Expanded(
+                                child: Text(
+                                  video['title'],
+                                  style: GoogleFonts.afacad(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF22223B),
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                video['level'],
+                                style: GoogleFonts.afacad(
+                                  fontSize: 10,
+                                  color: _getLevelColor(video['level']),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
           
           // Videos count
           Padding(
