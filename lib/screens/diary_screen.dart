@@ -3398,6 +3398,7 @@ Generated on: ${DateTime.now()}''';
     // If reminder exists, use its date/time; otherwise use current date/time
     DateTime selectedDate;
     TimeOfDay selectedTime;
+    Color dialogBgColor = Colors.white; // Default background color
     
     if (widget.entry.reminderDateTime != null) {
       try {
@@ -3416,71 +3417,95 @@ Generated on: ${DateTime.now()}''';
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
+        builder: (context, setOuterState) => AlertDialog(
+          backgroundColor: dialogBgColor,
           title: Row(
             children: [
               const Icon(Icons.notifications_active, color: Color(0xFFFFB74D)),
               const SizedBox(width: 12),
-              Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+              ),
+              // Color picker button for dialog background
+              GestureDetector(
+                onTap: () {
+                  _showDialogBackgroundColorPicker(setOuterState, (newColor) {
+                    setOuterState(() {
+                      dialogBgColor = newColor;
+                    });
+                  });
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: dialogBgColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!, width: 1),
+                  ),
+                  child: const Icon(Icons.palette, color: Color(0xFF8E97FD), size: 20),
+                ),
+              ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Date picker
-              ListTile(
-                leading: const Icon(Icons.calendar_today, color: Color(0xFF8E97FD)),
-                title: Text('Ngày', style: GoogleFonts.afacad()),
-                subtitle: Text(
-                  '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                  style: GoogleFonts.afacad(color: Colors.grey),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Date picker
+                ListTile(
+                  leading: const Icon(Icons.calendar_today, color: Color(0xFF8E97FD)),
+                  title: Text('Ngày', style: GoogleFonts.afacad()),
+                  subtitle: Text(
+                    '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                    style: GoogleFonts.afacad(color: Colors.grey),
+                  ),
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setOuterState(() {
+                        selectedDate = picked;
+                      });
+                    }
+                  },
                 ),
-                onTap: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  if (picked != null) {
-                    setDialogState(() {
-                      selectedDate = picked;
-                    });
-                  }
-                },
-              ),
-              // Time picker
-              ListTile(
-                leading: const Icon(Icons.access_time, color: Color(0xFF66BB6A)),
-                title: Text('Giờ', style: GoogleFonts.afacad()),
-                subtitle: Text(
-                  '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-                  style: GoogleFonts.afacad(color: Colors.grey),
+                // Time picker
+                ListTile(
+                  leading: const Icon(Icons.access_time, color: Color(0xFF66BB6A)),
+                  title: Text('Giờ', style: GoogleFonts.afacad()),
+                  subtitle: Text(
+                    '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                    style: GoogleFonts.afacad(color: Colors.grey),
+                  ),
+                  onTap: () async {
+                    final TimeOfDay? picked = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                    );
+                    if (picked != null) {
+                      setOuterState(() {
+                        selectedTime = picked;
+                      });
+                    }
+                  },
                 ),
-                onTap: () async {
-                  final TimeOfDay? picked = await showTimePicker(
-                    context: context,
-                    initialTime: selectedTime,
-                  );
-                  if (picked != null) {
-                    setDialogState(() {
-                      selectedTime = picked;
-                    });
-                  }
-                },
-              ),
-              // Quick options
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _buildQuickReminderChip('1 giờ', const Duration(hours: 1), setDialogState, selectedDate, selectedTime),
-                  _buildQuickReminderChip('1 ngày', const Duration(days: 1), setDialogState, selectedDate, selectedTime),
-                  _buildQuickReminderChip('1 tuần', const Duration(days: 7), setDialogState, selectedDate, selectedTime),
-                ],
-              ),
-            ],
+                // Quick options
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _buildQuickReminderChip('1 giờ', const Duration(hours: 1), setOuterState, selectedDate, selectedTime),
+                    _buildQuickReminderChip('1 ngày', const Duration(days: 1), setOuterState, selectedDate, selectedTime),
+                    _buildQuickReminderChip('1 tuần', const Duration(days: 7), setOuterState, selectedDate, selectedTime),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             if (widget.entry.reminderDateTime != null)
@@ -3593,4 +3618,51 @@ Generated on: ${DateTime.now()}''';
       return '';
     }
   }
+  
+  // Show color picker for dialog background
+  void _showDialogBackgroundColorPicker(StateSetter setDialogState, Function(Color) onColorSelected) {
+    final bgColors = [
+      Colors.white,
+      const Color(0xFFFFF9E6), // Kem
+      const Color(0xFFFFE6E6), // Hồng nhạt
+      const Color(0xFFE6F3FF), // Xanh lam nhạt
+      const Color(0xFFF0E6FF), // Tím nhạt
+      const Color(0xFFE6FFE6), // Xanh lá nhạt
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('Chọn màu nền popup', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: bgColors.map((color) {
+            return GestureDetector(
+              onTap: () {
+                onColorSelected(color);
+                Navigator.pop(context);
+              },
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.grey[300]!,
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(Icons.check, color: Color(0xFF8E97FD), size: 24),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
 }
+
+
