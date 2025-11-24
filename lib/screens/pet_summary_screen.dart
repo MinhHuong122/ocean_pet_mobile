@@ -42,6 +42,7 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
     super.initState();
     _loadPetData();
     _loadMedicalData();
+    _loadAppointments();
   }
 
   Future<void> _loadPetData() async {
@@ -59,35 +60,18 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
           petData = petDoc.data() ?? {};
         });
       }
+      print('✅ Loaded pet data for ${widget.petName}');
     } catch (e) {
-      print('Error loading pet data: $e');
+      print('❌ Error loading pet data: $e');
     }
   }
 
   Future<void> _loadMedicalData() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() => isLoading = false);
-        return;
-      }
-
-      // Load diary entries for this pet from Firestore
-      final diarySnapshot = await FirebaseFirestore.instance
-          .collection('diary_entries')
-          .where('user_id', isEqualTo: user.uid)
-          .where('pet_id', isEqualTo: widget.petId)
-          .orderBy('entry_date', descending: true)
-          .get();
-
-      print('📝 Loaded ${diarySnapshot.docs.length} diary entries for pet ${widget.petId}');
-
-      // Load medical records for this pet
       final recordSnapshot = await MedicalRecordService.getMedicalRecord(widget.petId);
 
       if (recordSnapshot != null) {
         setState(() {
-          // Get medical histories from consultations
           medicalHistories = recordSnapshot.consultations
               .map((c) => {
                 'id': c.id,
@@ -97,29 +81,74 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
                 'description': c.symptoms ?? '',
               })
               .toList();
-
-          // Generate appointments (next 30 days)
-          appointments = medicalHistories
-              .where((m) {
-                try {
-                  final date = DateTime.parse(m['date']);
-                  return date.isAfter(DateTime.now()) &&
-                      date.isBefore(DateTime.now().add(const Duration(days: 30)));
-                } catch (e) {
-                  return false;
-                }
-              })
-              .toList();
-
-          isLoading = false;
         });
+        print('✅ Loaded ${medicalHistories.length} medical histories for ${widget.petName}');
       } else {
-        setState(() {
-          isLoading = false;
-        });
+        print('⚠️ No medical records found for ${widget.petName}');
       }
     } catch (e) {
       print('❌ Error loading medical data: $e');
+    }
+  }
+
+  Future<void> _loadAppointments() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('❌ User not authenticated');
+        return;
+      }
+
+      // Query appointments directly from Firestore for this pet
+      final appointmentsSnapshot = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('pet_id', isEqualTo: widget.petId)
+          .where('user_id', isEqualTo: user.uid)
+          .get();
+
+      if (appointmentsSnapshot.docs.isNotEmpty) {
+        final loadedAppointments = <Map<String, dynamic>>[];
+        
+        for (var doc in appointmentsSnapshot.docs) {
+          final data = doc.data();
+          try {
+            final appointmentDate = (data['date'] is Timestamp)
+                ? (data['date'] as Timestamp).toDate()
+                : DateTime.parse(data['date'].toString());
+            
+            // Only show future appointments (next 30 days)
+            if (appointmentDate.isAfter(DateTime.now()) &&
+                appointmentDate.isBefore(DateTime.now().add(const Duration(days: 30)))) {
+              loadedAppointments.add({
+                'id': doc.id,
+                'condition': data['reason'] ?? data['diagnosis'] ?? 'Khám tổng quát',
+                'date': appointmentDate.toString().split(' ')[0],
+                'doctor': data['veterinarian'] ?? data['vet_name'] ?? 'Chưa xác định',
+                'description': data['notes'] ?? data['symptoms'] ?? '',
+                'time': data['time'] ?? '10:00',
+              });
+            }
+          } catch (e) {
+            print('❌ Error parsing appointment date: $e');
+          }
+        }
+
+        setState(() {
+          appointments = loadedAppointments;
+        });
+        print('✅ Loaded ${appointments.length} upcoming appointments for ${widget.petName}');
+      } else {
+        print('⚠️ No appointments found for ${widget.petName}');
+        setState(() {
+          appointments = [];
+        });
+      }
+      
+      setState(() {
+        isLoading = false;
+      });
+    } catch (e) {
+      print('❌ Error loading appointments: $e');
       setState(() {
         isLoading = false;
       });
