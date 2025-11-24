@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import './youtube_player_screen.dart';
 import '../helpers/youtube_utils.dart';
-import '../services/TrainingService.dart';
 
 class TrainingVideoScreen extends StatefulWidget {
   const TrainingVideoScreen({super.key});
@@ -21,8 +21,9 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
   List<Map<String, dynamic>> filteredVideos = [];
   Set<String> favoriteVideoIds = {};
   Set<String> watchedVideoIds = {};
+  Map<String, double> userRatings = {}; // videoId -> rating (1-5)
+  Map<String, int> videoWatchDuration = {}; // videoId -> watched seconds
   bool isLoading = true;
-  Map<String, dynamic> progressStats = {};
   
   // Filter states
   String selectedAnimalType = 'Tất cả';
@@ -144,7 +145,8 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
   void initState() {
     super.initState();
     _loadFavorites();
-    _loadProgress();
+    _loadWatchedVideos();
+    _loadUserRatings();
     _loadVideos();
   }
 
@@ -162,21 +164,136 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
     });
   }
 
-  Future<void> _loadProgress() async {
-    try {
-      final stats = await TrainingService.getProgressStats();
-      setState(() {
-        progressStats = stats;
-        watchedVideoIds = Set<String>.from(stats['watched_videos'] ?? []);
-      });
-    } catch (e) {
-      debugPrint('Error loading progress: $e');
-    }
-  }
-
   Future<void> _saveFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('favorite_videos', favoriteVideoIds.toList());
+  }
+
+  Future<void> _loadWatchedVideos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final watched = prefs.getStringList('watched_videos') ?? [];
+      
+      // Also load from Firebase if user is authenticated
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        
+        if (userDoc.exists) {
+          final watchedList = (userDoc.data()?['watched_videos'] as List?) ?? [];
+          setState(() {
+            watchedVideoIds = {...watched, ...watchedList.cast<String>()};
+          });
+        } else {
+          setState(() {
+            watchedVideoIds = watched.toSet();
+          });
+        }
+      } else {
+        setState(() {
+          watchedVideoIds = watched.toSet();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading watched videos: $e');
+    }
+  }
+
+  Future<void> _saveWatchedVideo(String videoId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final watched = prefs.getStringList('watched_videos') ?? [];
+      if (!watched.contains(videoId)) {
+        watched.add(videoId);
+        await prefs.setStringList('watched_videos', watched);
+      }
+      
+      // Save to Firebase
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'watched_videos': FieldValue.arrayUnion([videoId]),
+          'last_watched': FieldValue.serverTimestamp(),
+        }).onError((error, stackTrace) {
+          // Create user doc if it doesn't exist
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+            'watched_videos': [videoId],
+            'last_watched': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        });
+      }
+      
+      setState(() {
+        watchedVideoIds.add(videoId);
+      });
+    } catch (e) {
+      debugPrint('Error saving watched video: $e');
+    }
+  }
+
+  Future<void> _loadUserRatings() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      final ratingsDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('video_ratings')
+          .get();
+      
+      final ratings = <String, double>{};
+      for (var doc in ratingsDocs.docs) {
+        ratings[doc.id] = (doc.data()['rating'] as num?)?.toDouble() ?? 0.0;
+      }
+      
+      setState(() {
+        userRatings = ratings;
+      });
+    } catch (e) {
+      debugPrint('Error loading user ratings: $e');
+    }
+  }
+
+  Future<void> _saveVideoRating(String videoId, double rating) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('video_ratings')
+          .doc(videoId)
+          .set({
+        'rating': rating,
+        'rated_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      
+      // Update video average rating
+      await FirebaseFirestore.instance
+          .collection('training_videos')
+          .doc(videoId)
+          .update({
+        'rating': FieldValue.increment(rating),
+        'rating_count': FieldValue.increment(1),
+      });
+      
+      setState(() {
+        userRatings[videoId] = rating;
+      });
+    } catch (e) {
+      debugPrint('Error saving video rating: $e');
+    }
   }
 
   Future<void> _loadVideos() async {
@@ -301,31 +418,6 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
         ),
         centerTitle: true,
         actions: [
-          // Progress indicator
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${progressStats['total_watched'] ?? 0}/${progressStats['total_videos'] ?? 0}',
-                  style: GoogleFonts.afacad(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF8E97FD),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${progressStats['progress_percentage'] ?? '0.0'}%',
-                  style: GoogleFonts.afacad(
-                    fontSize: 11,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-              ],
-            ),
-          ),
           IconButton(
             icon: Badge(
               label: Text('${favoriteVideoIds.length}'),
@@ -337,10 +429,6 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           IconButton(
             icon: const Icon(Icons.card_giftcard, color: Color(0xFF8E97FD)),
             onPressed: _showDonateDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.checklist, color: Color(0xFF8E97FD)),
-            onPressed: _showProgressChecklist,
           ),
         ],
       ),
@@ -486,6 +574,7 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
   Widget _buildVideoCard(Map<String, dynamic> video) {
     final isFavorite = favoriteVideoIds.contains(video['id']);
     final isWatched = watchedVideoIds.contains(video['id']);
+    final userRating = userRatings[video['id']] ?? 0.0;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -503,6 +592,7 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
       child: InkWell(
         onTap: () {
           _incrementViews(video['id']);
+          _saveWatchedVideo(video['id']);
           _openYoutubePlayer(video['url'], video['title']);
         },
         borderRadius: BorderRadius.circular(16),
@@ -568,22 +658,39 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
                                 );
                               },
                             ),
-                            Positioned.fill(
-                              child: Center(
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    shape: BoxShape.circle,
+                            if (!isWatched)
+                              Positioned.fill(
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.9),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.play_arrow,
+                                      color: Color(0xFF8E97FD),
+                                      size: 24,
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.play_arrow,
-                                    color: Color(0xFF8E97FD),
-                                    size: 24,
+                                ),
+                              )
+                            else
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF66BB6A).withOpacity(0.3),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      color: Color(0xFF66BB6A),
+                                      size: 36,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                             Positioned(
                               bottom: 8,
                               right: 8,
@@ -612,19 +719,24 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
                       // Watched badge
                       if (isWatched)
                         Positioned(
-                          top: -8,
-                          right: -8,
+                          top: 8,
+                          left: 8,
                           child: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF66BB6A),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 16,
+                            child: Text(
+                              '✓ Đã xem',
+                              style: GoogleFonts.afacad(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -672,6 +784,57 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 8),
+                        // User rating stars
+                        if (userRating > 0)
+                          GestureDetector(
+                            onTap: () => _showRatingDialog(video['id'], userRating),
+                            child: Row(
+                              children: [
+                                ...List.generate(5, (index) {
+                                  return Icon(
+                                    index < userRating.toInt()
+                                        ? Icons.star
+                                        : Icons.star_border,
+                                    color: const Color(0xFFFFB74D),
+                                    size: 16,
+                                  );
+                                }),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Bạn: ${userRating.toStringAsFixed(1)}',
+                                  style: GoogleFonts.afacad(
+                                    fontSize: 11,
+                                    color: const Color(0xFFFFB74D),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          GestureDetector(
+                            onTap: () => _showRatingDialog(video['id'], 0),
+                            child: Row(
+                              children: [
+                                ...List.generate(5, (index) {
+                                  return const Icon(
+                                    Icons.star_border,
+                                    color: Color(0xFFFFB74D),
+                                    size: 16,
+                                  );
+                                }),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Đánh giá',
+                                  style: GoogleFonts.afacad(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -1074,28 +1237,101 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           videoTitle: videoTitle,
         ),
       ),
-    ).then((_) async {
-      // Mark video as watched after player closes
-      final videoId = _getVideoIdFromUrl(videoUrl);
-      if (videoId != null) {
-        try {
-          await TrainingService.markVideoAsWatched(videoId);
-          await _loadProgress();
-        } catch (e) {
-          debugPrint('Error marking video as watched: $e');
-        }
-      }
-    });
+    );
   }
 
-  String? _getVideoIdFromUrl(String url) {
-    // Find video by URL in allVideos list
-    try {
-      final video = allVideos.firstWhere((v) => v['url'] == url);
-      return video['id'];
-    } catch (e) {
-      return null;
-    }
+  void _showRatingDialog(String videoId, double currentRating) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Đánh giá video',
+                style: GoogleFonts.afacad(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF22223B),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: GestureDetector(
+                  onTap: () {}, // Stars interactive is in builder below
+                  child: StatefulBuilder(
+                    builder: (context, setDialogState) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (index) {
+                          return GestureDetector(
+                            onTap: () {
+                              final rating = (index + 1).toDouble();
+                              _saveVideoRating(videoId, rating);
+                              setDialogState(() {});
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Cảm ơn bạn đã đánh giá ${rating.toStringAsFixed(1)}/5 ⭐',
+                                    style: GoogleFonts.afacad(),
+                                  ),
+                                  backgroundColor: const Color(0xFF8B5CF6),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Icon(
+                                index < currentRating.toInt()
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color: const Color(0xFFFFB74D),
+                                size: 40,
+                              ),
+                            ),
+                          );
+                        }),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E97FD),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Đóng',
+                    style: GoogleFonts.afacad(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showDonateDialog() {
@@ -1249,220 +1485,6 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  void _showProgressChecklist() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.checklist, color: Color(0xFF8E97FD), size: 28),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Tiến độ huấn luyện',
-                    style: GoogleFonts.afacad(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF22223B),
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Overall progress
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8E97FD).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Tổng tiến độ',
-                          style: GoogleFonts.afacad(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF22223B),
-                          ),
-                        ),
-                        Text(
-                          '${progressStats['total_watched'] ?? 0}/${progressStats['total_videos'] ?? 0} video',
-                          style: GoogleFonts.afacad(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF8E97FD),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: (progressStats['total_videos'] ?? 0) > 0
-                            ? (progressStats['total_watched'] ?? 0) /
-                                (progressStats['total_videos'] ?? 1)
-                            : 0,
-                        minHeight: 8,
-                        backgroundColor: Colors.grey[300],
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF8E97FD),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '${progressStats['progress_percentage'] ?? '0.0'}% hoàn thành',
-                      style: GoogleFonts.afacad(
-                        fontSize: 14,
-                        color: const Color(0xFF6B7280),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Danh sách video',
-                style: GoogleFonts.afacad(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF22223B),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Videos checklist
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  itemCount: allVideos.length,
-                  itemBuilder: (context, index) {
-                    final video = allVideos[index];
-                    final isWatched = watchedVideoIds.contains(video['id']);
-                    
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(
-                            color: isWatched
-                                ? const Color(0xFF66BB6A)
-                                : Colors.grey[300]!,
-                            width: 4,
-                          ),
-                        ),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        leading: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: isWatched
-                                ? const Color(0xFF66BB6A).withOpacity(0.1)
-                                : Colors.grey[200],
-                          ),
-                          child: Center(
-                            child: Icon(
-                              isWatched ? Icons.check_circle : Icons.play_circle,
-                              color: isWatched
-                                  ? const Color(0xFF66BB6A)
-                                  : Colors.grey[400],
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          video['title'],
-                          style: GoogleFonts.afacad(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF22223B),
-                            decoration: isWatched
-                                ? TextDecoration.lineThrough
-                                : TextDecoration.none,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getLevelColor(video['level'])
-                                    .withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                video['level'],
-                                style: GoogleFonts.afacad(
-                                  fontSize: 10,
-                                  color: _getLevelColor(video['level']),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              video['animalType'],
-                              style: GoogleFonts.afacad(
-                                fontSize: 10,
-                                color: const Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
-                        ),
-                        trailing: isWatched
-                            ? const Icon(
-                                Icons.done,
-                                color: Color(0xFF66BB6A),
-                                size: 24,
-                              )
-                            : null,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
