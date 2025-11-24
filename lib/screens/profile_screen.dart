@@ -625,10 +625,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showNotificationSettings() async {
-    // Simplified notification settings without permission package
-    bool dailyReminder = true;
-    bool appointmentReminder = true;
-    bool feedingReminder = true;
+    // Load notification settings from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    
+    bool notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    bool appointmentReminder = prefs.getBool('appointment_reminder') ?? true;
+    bool diaryReminder = prefs.getBool('diary_reminder') ?? true;
 
     showDialog(
       context: context,
@@ -659,48 +661,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildSwitchTile(
-                    title: 'Nhắc nhở hàng ngày',
-                    subtitle: 'Nhắc chăm sóc thú cưng mỗi ngày',
-                    value: dailyReminder,
-                    onChanged: (value) {
-                      setDialogState(() {
-                        dailyReminder = value;
-                      });
-                    },
+                  // Master notification toggle
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF5350).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFEF5350).withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: SwitchListTile(
+                      title: Text(
+                        'Bật/Tắt thông báo toàn bộ app',
+                        style: GoogleFonts.afacad(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: const Color(0xFF22223B),
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Áp dụng cho toàn bộ ứng dụng',
+                        style: GoogleFonts.afacad(
+                          fontSize: 12,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ),
+                      value: notificationsEnabled,
+                      activeThumbColor: const Color(0xFF66BB6A),
+                      activeTrackColor: const Color(0xFF66BB6A).withOpacity(0.5),
+                      inactiveThumbColor: const Color(0xFFBDBDBD),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          notificationsEnabled = value;
+                        });
+                      },
+                    ),
                   ),
-                  _buildSwitchTile(
-                    title: 'Nhắc lịch hẹn',
-                    subtitle: 'Nhắc trước 1 ngày',
-                    value: appointmentReminder,
-                    onChanged: (value) {
-                      setDialogState(() {
-                        appointmentReminder = value;
-                      });
-                    },
+                  
+                  // Divider
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Divider(
+                      color: const Color(0xFF8E97FD).withOpacity(0.2),
+                      thickness: 1,
+                    ),
                   ),
-                  _buildSwitchTile(
-                    title: 'Nhắc cho ăn',
-                    subtitle: 'Nhắc giờ cho ăn',
-                    value: feedingReminder,
-                    onChanged: (value) {
-                      setDialogState(() {
-                        feedingReminder = value;
-                      });
-                    },
+                  
+                  // Individual notification settings (only enabled if master is on)
+                  Opacity(
+                    opacity: notificationsEnabled ? 1.0 : 0.5,
+                    child: Column(
+                      children: [
+                        _buildSwitchTile(
+                          title: 'Thông báo lịch hẹn',
+                          subtitle: 'Nhắc trước 1 ngày khi có lịch khám, tiêm chủng...',
+                          value: appointmentReminder && notificationsEnabled,
+                          onChanged: notificationsEnabled
+                              ? (value) {
+                                  setDialogState(() {
+                                    appointmentReminder = value;
+                                  });
+                                }
+                              : null,
+                        ),
+                        _buildSwitchTile(
+                          title: 'Thông báo nhắc nhở',
+                          subtitle: 'Nhắc nhở từ các mục trong nhật ký',
+                          value: diaryReminder && notificationsEnabled,
+                          onChanged: notificationsEnabled
+                              ? (value) {
+                                  setDialogState(() {
+                                    diaryReminder = value;
+                                  });
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
               actions: [
-                ElevatedButton(
+                TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Đã lưu cài đặt thông báo'),
-                        backgroundColor: Color(0xFF66BB6A),
-                      ),
-                    );
+                  },
+                  child: Text(
+                    'Hủy',
+                    style: GoogleFonts.afacad(
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Save settings to SharedPreferences
+                    await prefs.setBool('notifications_enabled', notificationsEnabled);
+                    await prefs.setBool('appointment_reminder', appointmentReminder);
+                    await prefs.setBool('diary_reminder', diaryReminder);
+                    
+                    print('✅ [Notification Settings] Saved:');
+                    print('   - Notifications enabled: $notificationsEnabled');
+                    print('   - Appointment reminder: $appointmentReminder');
+                    print('   - Diary reminder: $diaryReminder');
+                    
+                    if (mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Đã lưu cài đặt thông báo'),
+                          backgroundColor: const Color(0xFF66BB6A),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF8E97FD),
@@ -728,7 +806,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String subtitle,
     required bool value,
-    required Function(bool) onChanged,
+    required Function(bool)? onChanged,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -737,11 +815,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: SwitchListTile(
-        title:
-            Text(title, style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: GoogleFonts.afacad(fontSize: 12)),
+        title: Text(
+          title,
+          style: GoogleFonts.afacad(
+            fontWeight: FontWeight.bold,
+            color: onChanged != null ? const Color(0xFF22223B) : const Color(0xFF22223B).withOpacity(0.5),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: GoogleFonts.afacad(
+            fontSize: 12,
+            color: onChanged != null ? const Color(0xFF6B7280) : const Color(0xFF6B7280).withOpacity(0.5),
+          ),
+        ),
         value: value,
         activeThumbColor: const Color(0xFF8E97FD),
+        activeTrackColor: const Color(0xFF8E97FD).withOpacity(0.5),
+        inactiveThumbColor: const Color(0xFFBDBDBD),
         onChanged: onChanged,
       ),
     );
