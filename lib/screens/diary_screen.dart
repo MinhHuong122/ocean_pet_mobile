@@ -1491,44 +1491,121 @@ class _DiaryScreenState extends State<DiaryScreen> {
       const Color(0xFFE6FFE6), // Xanh lá nhạt
     ];
     
+    Color selectedDialogColor = Colors.white;
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: colors.map((color) {
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  entry.bgColor = color;
-                  _saveDiaryEntries();
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã đổi màu nền', style: GoogleFonts.afacad()),
-                    backgroundColor: const Color(0xFF66BB6A),
-                  ),
-                );
-              },
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
-                    width: entry.bgColor == color ? 3 : 1,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: selectedDialogColor,
+            title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Phần chọn màu nền cho bản ghi (entry)
+                Text(
+                  'Màu nền bản ghi',
+                  style: GoogleFonts.afacad(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: const Color(0xFF22223B),
                   ),
                 ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: colors.map((color) {
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          entry.bgColor = color;
+                          _saveDiaryEntries();
+                        });
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Đã đổi màu nền', style: GoogleFonts.afacad()),
+                            backgroundColor: const Color(0xFF66BB6A),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
+                            width: entry.bgColor == color ? 3 : 1,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Phần chọn màu nền cho popup
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Màu nền popup',
+                        style: GoogleFonts.afacad(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: const Color(0xFF22223B),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: colors.map((color) {
+                          return GestureDetector(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedDialogColor = color;
+                              });
+                            },
+                            child: Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: selectedDialogColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
+                                  width: selectedDialogColor == color ? 3 : 1,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Đóng', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
               ),
-            );
-          }).toList(),
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -3398,7 +3475,6 @@ Generated on: ${DateTime.now()}''';
     // If reminder exists, use its date/time; otherwise use current date/time
     DateTime selectedDate;
     TimeOfDay selectedTime;
-    Color dialogBgColor = Colors.white;
     
     if (widget.entry.reminderDateTime != null) {
       try {
@@ -3418,29 +3494,12 @@ Generated on: ${DateTime.now()}''';
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: dialogBgColor,
+          backgroundColor: Colors.white,
           title: Row(
             children: [
               const Icon(Icons.notifications_active, color: Color(0xFFFFB74D)),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-              ),
-              GestureDetector(
-                onTap: () => _showDialogBackgroundColorPicker(setDialogState, (newColor) {
-                  setDialogState(() {
-                    dialogBgColor = newColor;
-                  });
-                }),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.palette, size: 20, color: Color(0xFF8E97FD)),
-                ),
-              ),
+              Text('Đặt nhắc nhở', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -3611,60 +3670,4 @@ Generated on: ${DateTime.now()}''';
       return '';
     }
   }
-  
-  // Show color picker for dialog background
-  void _showDialogBackgroundColorPicker(StateSetter setDialogState, Function(Color) onColorSelected) {
-    final List<Map<String, dynamic>> colors = [
-      {'name': 'Trắng', 'color': Colors.white},
-      {'name': 'Kem', 'color': const Color(0xFFFFF9E6)},
-      {'name': 'Hồng nhạt', 'color': const Color(0xFFFFE6E6)},
-      {'name': 'Xanh nhạt', 'color': const Color(0xFFE6F3FF)},
-      {'name': 'Tím nhạt', 'color': const Color(0xFFF0E6FF)},
-      {'name': 'Xanh lá nhạt', 'color': const Color(0xFFE6FFE6)},
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        content: Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: colors.map((colorData) {
-            return GestureDetector(
-              onTap: () {
-                onColorSelected(colorData['color']);
-                Navigator.pop(context);
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: colorData['color'],
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF8E97FD),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    colorData['name'],
-                    style: GoogleFonts.afacad(fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
 }
-
