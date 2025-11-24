@@ -663,6 +663,7 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
   Widget _buildMedicalRecordsTab() {
     return Column(
       children: [
+        // View detailed records button - always shown
         GestureDetector(
           onTap: () {
             Navigator.push(
@@ -711,6 +712,78 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
             ),
           ),
         ),
+        
+        // Medical history preview list
+        if (medicalHistories.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Các Bệnh Đã Ghi Nhận',
+            style: GoogleFonts.afacad(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...medicalHistories.map((history) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          history['condition'] ?? '',
+                          style: GoogleFonts.afacad(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        history['date'] ?? '',
+                        style: GoogleFonts.afacad(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Bác sĩ: ${history['doctor'] ?? 'Chưa xác định'}',
+                    style: GoogleFonts.afacad(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  if (history['description'] != null && history['description']!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      history['description'] ?? '',
+                      style: GoogleFonts.afacad(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+        ],
       ],
     );
   }
