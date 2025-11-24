@@ -1022,9 +1022,9 @@ class _DatingScreenState extends State<DatingScreen>
                       width: double.infinity,
                       height: 180,
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF8B5CF6), width: 2),
+                        border: Border.all(color: Colors.black, width: 2),
                         borderRadius: BorderRadius.circular(12),
-                        color: const Color(0xFF8B5CF6).withOpacity(0.05),
+                        color: Colors.grey.withOpacity(0.05),
                       ),
                       child: imagePath != null
                           ? ClipRRect(
@@ -1040,13 +1040,13 @@ class _DatingScreenState extends State<DatingScreen>
                                 const Icon(
                                   Icons.image_outlined,
                                   size: 48,
-                                  color: Color(0xFF8B5CF6),
+                                  color: Colors.black,
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
                                   'Chọn ảnh thú cưng',
                                   style: GoogleFonts.afacad(
-                                    color: const Color(0xFF8B5CF6),
+                                    color: Colors.black,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
