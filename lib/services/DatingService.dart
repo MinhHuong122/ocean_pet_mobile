@@ -109,6 +109,57 @@ class DatingService {
     });
   }
 
+  /// Lấy tất cả dating profiles để khám phá (trừ của user hiện tại)
+  static Stream<List<Map<String, dynamic>>> getAllDatingProfiles() {
+    final userId = currentUserId;
+    if (userId == null) return Stream.value([]);
+
+    return _firestore
+        .collection('users')
+        .snapshots()
+        .map((usersSnapshot) {
+      List<Map<String, dynamic>> allProfiles = [];
+      
+      for (var userDoc in usersSnapshot.docs) {
+        if (userDoc.id == userId) continue; // Skip current user
+        
+        // Get all active dating profiles from other users
+        _firestore
+            .collection('users')
+            .doc(userDoc.id)
+            .collection('dating_profiles')
+            .where('active', isEqualTo: true)
+            .snapshots()
+            .listen((profileSnapshot) {
+          for (var profileDoc in profileSnapshot.docs) {
+            allProfiles.add({
+              ...profileDoc.data(),
+              'id': profileDoc.id,
+              'owner_id': userDoc.id,
+            });
+          }
+        });
+      }
+      
+      return allProfiles;
+    });
+  }
+
+  /// Lấy favorites của user
+  static Stream<List<String>> getUserFavorites() {
+    final userId = currentUserId;
+    if (userId == null) return Stream.value([]);
+
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('favorites')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => doc.id).toList();
+    });
+  }
+
   /// Cập nhật profile dating
   static Future<void> updatePetProfile(
     String petId,
