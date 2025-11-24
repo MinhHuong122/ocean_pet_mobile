@@ -30,7 +30,7 @@ class _DatingScreenState extends State<DatingScreen>
       'age': '2 năm',
       'gender': 'Cái',
       'location': 'Quận 1, TP.HCM',
-      'image': 'lib/res/drawables/001-cat.png',
+      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample1.jpg',
       'description': 'Mimi là chú chó vui vẻ, thích chơi và kết bạn',
       'interests': ['Chơi bóng', 'Chạy bộ', 'Bơi lội'],
       'matches': 12,
@@ -43,7 +43,7 @@ class _DatingScreenState extends State<DatingScreen>
       'age': '3 năm',
       'gender': 'Đực',
       'location': 'Quận 3, TP.HCM',
-      'image': 'lib/res/drawables/007-dog.png',
+      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample2.jpg',
       'description': 'Max là chú chó thích yên tĩnh nhưng vui vẻ',
       'interests': ['Ngủ trưa', 'Ăn bánh', 'Thú vị'],
       'matches': 8,
@@ -56,7 +56,7 @@ class _DatingScreenState extends State<DatingScreen>
       'age': '1 năm',
       'gender': 'Cái',
       'location': 'Quận 7, TP.HCM',
-      'image': 'lib/res/drawables/006-rabbit.png',
+      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample3.jpg',
       'description': 'Luna là chú chó năng động, thích phiêu lưu',
       'interests': ['Chạy trong tuyết', 'Kéo xe', 'Đi bộ'],
       'matches': 15,
@@ -69,7 +69,7 @@ class _DatingScreenState extends State<DatingScreen>
       'age': '4 năm',
       'gender': 'Đực',
       'location': 'Quận 5, TP.HCM',
-      'image': 'lib/res/drawables/008-parrot.png',
+      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample4.jpg',
       'description': 'Buddy là chú chó thân thiện, tốt bụng',
       'interests': ['Gia đình', 'Trẻ em', 'Công viên'],
       'matches': 20,
@@ -317,14 +317,15 @@ class _DatingScreenState extends State<DatingScreen>
                       borderRadius: BorderRadius.circular(24),
                       child: Stack(
                         children: [
-                          // Profile image
+                          // Profile image - from Cloudinary
                           Container(
                             height: MediaQuery.of(context).size.height * 0.7,
                             decoration: BoxDecoration(
                               image: DecorationImage(
-                                image: AssetImage(profile['image']),
+                                image: NetworkImage(profile['image_url'] ?? ''),
                                 fit: BoxFit.cover,
                               ),
+                              color: Colors.grey[300],
                             ),
                           ),
                           // Gradient overlay
@@ -421,7 +422,7 @@ class _DatingScreenState extends State<DatingScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${profile['name']}, ${profile['age']}',
+                                    '${profile['pet_name']}, ${profile['age']}',
                                     style: GoogleFonts.afacad(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -525,7 +526,7 @@ class _DatingScreenState extends State<DatingScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '❤️ Bạn thích ${petProfiles[currentCardIndex]['name']}!',
+            '❤️ Bạn thích ${petProfiles[currentCardIndex]['pet_name']}!',
             style: GoogleFonts.afacad(),
           ),
           backgroundColor: const Color(0xFF8B5CF6),
@@ -538,7 +539,7 @@ class _DatingScreenState extends State<DatingScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '👋 Đã bỏ qua ${petProfiles[currentCardIndex]['name']}',
+            '👋 Đã bỏ qua ${petProfiles[currentCardIndex]['pet_name']}',
             style: GoogleFonts.afacad(),
           ),
           backgroundColor: const Color(0xFF9CA3AF),
