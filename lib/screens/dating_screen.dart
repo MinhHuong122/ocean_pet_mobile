@@ -1069,21 +1069,22 @@ class _DatingScreenState extends State<DatingScreen>
                     controller: nameController,
                     decoration: InputDecoration(
                       hintText: 'Tên thú cưng',
+                      hintStyle: GoogleFonts.afacad(color: const Color(0xFF9CA3AF)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                        borderSide: const BorderSide(color: Colors.black, width: 2),
                       ),
-                      prefixIcon: const Icon(Icons.pets, color: Color(0xFF8B5CF6)),
+                      prefixIcon: const Icon(Icons.pets, color: Colors.black),
                     ),
-                    style: GoogleFonts.afacad(),
+                    style: GoogleFonts.afacad(color: const Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 12),
                   // Breed
@@ -1091,21 +1092,22 @@ class _DatingScreenState extends State<DatingScreen>
                     controller: breedController,
                     decoration: InputDecoration(
                       hintText: 'Giống loại (Golden Retriever, Pug, Husky...)',
+                      hintStyle: GoogleFonts.afacad(color: const Color(0xFF9CA3AF)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                        borderSide: const BorderSide(color: Colors.black, width: 2),
                       ),
-                      prefixIcon: const Icon(Icons.category, color: Color(0xFF8B5CF6)),
+                      prefixIcon: const Icon(Icons.category, color: Colors.black),
                     ),
-                    style: GoogleFonts.afacad(),
+                    style: GoogleFonts.afacad(color: const Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 12),
                   // Age
@@ -1113,21 +1115,22 @@ class _DatingScreenState extends State<DatingScreen>
                     controller: ageController,
                     decoration: InputDecoration(
                       hintText: 'Tuổi (vd: 2 năm, 6 tháng)',
+                      hintStyle: GoogleFonts.afacad(color: const Color(0xFF9CA3AF)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                        borderSide: const BorderSide(color: Colors.black, width: 2),
                       ),
-                      prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF8B5CF6)),
+                      prefixIcon: const Icon(Icons.calendar_today, color: Colors.black),
                     ),
-                    style: GoogleFonts.afacad(),
+                    style: GoogleFonts.afacad(color: const Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 12),
                   // Gender
@@ -1136,22 +1139,22 @@ class _DatingScreenState extends State<DatingScreen>
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                        borderSide: const BorderSide(color: Colors.black, width: 2),
                       ),
-                      prefixIcon: const Icon(Icons.wc, color: Color(0xFF8B5CF6)),
+                      prefixIcon: const Icon(Icons.wc, color: Colors.black),
                     ),
                     items: ['Đực', 'Cái']
                         .map((gender) => DropdownMenuItem(
                               value: gender,
-                              child: Text(gender, style: GoogleFonts.afacad()),
+                              child: Text(gender, style: GoogleFonts.afacad(color: const Color(0xFF6B7280))),
                             ))
                         .toList(),
                     onChanged: (value) {
@@ -1164,21 +1167,22 @@ class _DatingScreenState extends State<DatingScreen>
                     controller: locationController,
                     decoration: InputDecoration(
                       hintText: 'Địa chỉ (Quận 1, TP.HCM)',
+                      hintStyle: GoogleFonts.afacad(color: const Color(0xFF9CA3AF)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                        borderSide: const BorderSide(color: Colors.black, width: 2),
                       ),
-                      prefixIcon: const Icon(Icons.location_on, color: Color(0xFF8B5CF6)),
+                      prefixIcon: const Icon(Icons.location_on, color: Colors.black),
                     ),
-                    style: GoogleFonts.afacad(),
+                    style: GoogleFonts.afacad(color: const Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 12),
                   // Description
@@ -1186,22 +1190,23 @@ class _DatingScreenState extends State<DatingScreen>
                     controller: descriptionController,
                     decoration: InputDecoration(
                       hintText: 'Mô tả về thú cưng',
+                      hintStyle: GoogleFonts.afacad(color: const Color(0xFF9CA3AF)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                        borderSide: const BorderSide(color: Colors.black, width: 2),
                       ),
-                      prefixIcon: const Icon(Icons.description, color: Color(0xFF8B5CF6)),
+                      prefixIcon: const Icon(Icons.description, color: Colors.black),
                     ),
                     maxLines: 3,
-                    style: GoogleFonts.afacad(),
+                    style: GoogleFonts.afacad(color: const Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 24),
                   // Buttons
