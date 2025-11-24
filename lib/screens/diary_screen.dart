@@ -136,6 +136,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
   
   String? selectedFolderId; // Filter by pet
   bool _isLoading = true;
+  int activeReminders = 0; // Track count of diary entries with active reminders
   
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _isRecorderInitialized = false;
@@ -168,6 +169,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
       _loadDiaryEntries(),
       _loadTrashedEntries(),
     ]);
+    await _loadReminderStats();
     setState(() => _isLoading = false);
   }
   
@@ -255,6 +257,36 @@ class _DiaryScreenState extends State<DiaryScreen> {
       print('🗑️ Loaded ${trashedEntries.length} trashed entries');
     } catch (e) {
       print('❌ Error loading trashed entries: $e');
+    }
+  }
+  
+  // Load and count active reminders
+  Future<void> _loadReminderStats() async {
+    try {
+      final now = DateTime.now();
+      int activeReminderCount = 0;
+      
+      // Count diary entries with active (future) reminders
+      for (final entry in diaryEntries) {
+        if (entry.reminderDateTime != null) {
+          try {
+            final reminderDateTime = DateTime.parse(entry.reminderDateTime!);
+            if (reminderDateTime.isAfter(now)) {
+              activeReminderCount++;
+            }
+          } catch (e) {
+            // Invalid date format, skip
+          }
+        }
+      }
+      
+      setState(() {
+        activeReminders = activeReminderCount;
+      });
+      
+      print('📌 Loaded $activeReminderCount active reminders');
+    } catch (e) {
+      print('❌ Error loading reminder stats: $e');
     }
   }
   
@@ -425,6 +457,37 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       ),
                     ),
                   ),
+                  // Reminder stats container
+                  if (activeReminders > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF8E97FD).withOpacity(0.3)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF8E97FD).withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildReminderStatItem(
+                              icon: Icons.notifications_active,
+                              label: 'Nhắc nhở',
+                              value: activeReminders.toString(),
+                              color: const Color(0xFF8E97FD),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   // Diary entries grid
                   Expanded(
                     child: filteredEntries.isEmpty
@@ -793,6 +856,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
               });
             }
             _saveDiaryEntries();
+            _loadReminderStats(); // Reload reminder count after update
           },
           onDelete: (id) {
             _moveToTrash(id);
@@ -3126,6 +3190,45 @@ Generated on: ${DateTime.now()}''';
       default:
         return const Color(0xFF8E97FD);
     }
+  }
+  
+  // Build reminder stat item
+  Widget _buildReminderStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: GoogleFonts.afacad(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.afacad(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
   }
   
   // Show image options (delete or edit)
