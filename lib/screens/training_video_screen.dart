@@ -409,6 +409,61 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
       ..sort((a, b) => (b['rating'] as double).compareTo(a['rating'] as double));
   }
 
+  Map<String, bool> _getCategoryCompletionStatus() {
+    final completion = <String, bool>{};
+    final categories = {'Chó', 'Mèo', 'Thỏ', 'Chim', 'Khác'};
+    
+    for (var category in categories) {
+      final categoryVideos = allVideos
+          .where((v) => v['animalType'] == category)
+          .toList();
+      
+      if (categoryVideos.isEmpty) {
+        completion[category] = false;
+        continue;
+      }
+      
+      final allWatched = categoryVideos.every(
+        (v) => watchedVideoIds.contains(v['id']),
+      );
+      completion[category] = allWatched && categoryVideos.isNotEmpty;
+    }
+    
+    return completion;
+  }
+
+  Future<void> _unlockCertificate(String categoryName) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('achievements')
+          .doc('certificate_$categoryName')
+          .set({
+        'category': categoryName,
+        'type': 'certificate',
+        'unlocked_at': FieldValue.serverTimestamp(),
+        'level': 'Huấn luyện toàn bộ',
+      }, SetOptions(merge: true));
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '🎉 Xin chúc mừng! Bạn đã nhận chứng chỉ huấn luyện $categoryName!',
+            style: GoogleFonts.afacad(),
+          ),
+          backgroundColor: const Color(0xFF66BB6A),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error unlocking certificate: $e');
+    }
+  }
+
   void _toggleFavorite(String videoId) async {
     setState(() {
       if (favoriteVideoIds.contains(videoId)) {
@@ -466,6 +521,10 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           IconButton(
             icon: const Icon(Icons.card_giftcard, color: Color(0xFF8E97FD)),
             onPressed: _showDonateDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.military_tech, color: Color(0xFFFFB74D)),
+            onPressed: _showAchievements,
           ),
         ],
       ),
@@ -1550,6 +1609,229 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
                       color: Colors.white,
                     ),
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAchievements() {
+    final categoryStatus = _getCategoryCompletionStatus();
+    final completedCategories = categoryStatus.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.military_tech,
+                    color: Color(0xFFFFB74D),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Thành tích (${completedCategories.length})',
+                    style: GoogleFonts.afacad(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    if (completedCategories.isEmpty)
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.stars_outlined,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Chưa có thành tích nào',
+                              style: GoogleFonts.afacad(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Hoàn thành tất cả video trong một loài để nhận chứng chỉ',
+                              style: GoogleFonts.afacad(
+                                fontSize: 13,
+                                color: Colors.grey[500],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...completedCategories.map((category) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFB74D), Color(0xFFFFA726)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.card_membership,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Chứng chỉ Huấn luyện $category',
+                                      style: GoogleFonts.afacad(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Đã hoàn thành tất cả video',
+                                      style: GoogleFonts.afacad(
+                                        fontSize: 12,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Các loài chưa hoàn thành',
+                      style: GoogleFonts.afacad(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF22223B),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...categoryStatus.entries
+                        .where((e) => !e.value)
+                        .map((entry) {
+                      final categoryVideos = allVideos
+                          .where((v) => v['animalType'] == entry.key)
+                          .toList();
+                      final watched = categoryVideos
+                          .where((v) => watchedVideoIds.contains(v['id']))
+                          .length;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey[300]!,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  entry.key,
+                                  style: GoogleFonts.afacad(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF22223B),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '$watched/${categoryVideos.length}',
+                                  style: GoogleFonts.afacad(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: categoryVideos.isEmpty
+                                    ? 0
+                                    : watched / categoryVideos.length,
+                                minHeight: 6,
+                                backgroundColor: Colors.grey[300],
+                                valueColor: const AlwaysStoppedAnimation(
+                                  Color(0xFF8B5CF6),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ),
             ],
