@@ -1,4 +1,4 @@
-﻿// lib/screens/pet_management_screen.dart
+// lib/screens/pet_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ocean_pet/services/FirebaseService.dart';
@@ -40,7 +40,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể tải danh sách thú cưng: $e'),
+            content: Text('Kh�ng th? t?i danh s�ch th� c�ng: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -60,7 +60,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Quản lý thú cưng',
+          'Qu?n l? th� c�ng',
           style: GoogleFonts.afacad(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -93,7 +93,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Chưa có thú cưng nào',
+                        'Ch�a c� th� c�ng n�o',
                         style: GoogleFonts.afacad(
                           fontSize: 18,
                           color: Colors.grey[400],
@@ -125,7 +125,7 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
         backgroundColor: const Color(0xFF8E97FD),
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text(
-          'Thêm thú cưng',
+          'Th�m th� c�ng',
           style: GoogleFonts.afacad(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -137,24 +137,24 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
 
   // Format age from months to years/months display
   String _formatAgeDisplay(int? ageMonths) {
-    if (ageMonths == null) return 'Chưa rõ';
+    if (ageMonths == null) return 'Ch�a r?';
     
     if (ageMonths < 12) {
-      return '$ageMonths tháng';
+      return '$ageMonths th�ng';
     } else {
       int years = ageMonths ~/ 12;
       int months = ageMonths % 12;
       if (months == 0) {
-        return '$years năm';
+        return '$years n�m';
       } else {
-        return '$years năm $months tháng';
+        return '$years n�m $months th�ng';
       }
     }
   }
 
   Widget _buildPetCard(Map<String, dynamic> pet) {
-    final String name = pet['name'] ?? 'Không có tên';
-    final String type = pet['type'] ?? 'Không rõ loại';
+    final String name = pet['name'] ?? 'Kh�ng c� t�n';
+    final String type = pet['type'] ?? 'Kh�ng r? lo?i';
     final String? breed = pet['breed'];
     final int? age = pet['age'];
     final double? weight = pet['weight'];
@@ -162,11 +162,11 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
     final String gender = pet['gender'] ?? 'unknown';
     final String? avatarUrl = pet['avatar_url'];
 
-    String genderDisplay = gender == 'male' ? 'Đực' : gender == 'female' ? 'Cái' : 'Khác';
+    String genderDisplay = gender == 'male' ? '�?c' : gender == 'female' ? 'C�i' : 'Kh�c';
     IconData genderIcon = gender == 'male' ? Icons.male : gender == 'female' ? Icons.female : Icons.help_outline;
     String ageDisplay = _formatAgeDisplay(age);
-    String weightDisplay = weight != null ? '${weight}kg' : 'Chưa rõ';
-    String heightDisplay = height != null ? '${height}cm' : 'Chưa rõ';
+    String weightDisplay = weight != null ? '${weight}kg' : 'Ch�a r?';
+    String heightDisplay = height != null ? '${height}cm' : 'Ch�a r?';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -250,8 +250,8 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
                   }
                 },
                 itemBuilder: (context) => [
-                  PopupMenuItem(value: 'edit', child: Row(children: [const Icon(Icons.edit, color: Color(0xFF8E97FD)), const SizedBox(width: 8), Text('Chỉnh sửa', style: GoogleFonts.afacad())])),
-                  PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete, color: Color(0xFFEF5350)), const SizedBox(width: 8), Text('Xóa', style: GoogleFonts.afacad())])),
+                  PopupMenuItem(value: 'edit', child: Row(children: [const Icon(Icons.edit, color: Color(0xFF8E97FD)), const SizedBox(width: 8), Text('Ch?nh s?a', style: GoogleFonts.afacad())])),
+                  PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete, color: Color(0xFFEF5350)), const SizedBox(width: 8), Text('X�a', style: GoogleFonts.afacad())])),
                 ],
               ),
             ],
@@ -266,25 +266,26 @@ class _PetManagementScreenState extends State<PetManagementScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Xóa thú cưng', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: const Color(0xFFEF5350))),
-          content: Text('Bạn có chắc chắn muốn xóa ${pet['name']}?', style: GoogleFonts.afacad()),
+          title: Text('X�a th� c�ng', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: const Color(0xFFEF5350))),
+          content: Text('B?n c� ch?c ch?n mu?n x�a ${pet['name']}?', style: GoogleFonts.afacad()),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Hủy', style: GoogleFonts.afacad(color: Colors.grey))),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('H?y', style: GoogleFonts.afacad(color: Colors.grey))),
             ElevatedButton(
               onPressed: () async {
                 try {
                   await FirebaseService.deletePet(pet['id']);
                   Navigator.pop(context);
                   _loadPets();
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã xóa ${pet['name']}'), backgroundColor: const Color(0xFF66BB6A)));
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('�? x�a ${pet['name']}'), backgroundColor: const Color(0xFF66BB6A)));
                 } catch (e) {
                   Navigator.pop(context);
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi xóa: $e'), backgroundColor: const Color(0xFFEF5350)));
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('L?i khi x�a: $e'), backgroundColor: const Color(0xFFEF5350)));
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF5350), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: Text('Xóa', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.white)),
+              child: Text('X�a', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         );

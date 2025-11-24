@@ -516,6 +516,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Đang phân tích sức khỏe...', style: GoogleFonts.afacad()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -564,6 +565,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Kết quả phân tích sức khỏe', style: GoogleFonts.afacad()),
         content: SingleChildScrollView(
           child: Column(
@@ -1436,6 +1438,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Xóa tệp', style: GoogleFonts.afacad()),
         content: Text('Bạn có chắc muốn xóa tệp này?', style: GoogleFonts.afacad()),
         actions: [
@@ -1859,6 +1862,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Xác nhận xóa', style: GoogleFonts.afacad()),
         content: Text('Bạn có chắc muốn xóa bệnh lý này?', style: GoogleFonts.afacad()),
         actions: [
@@ -1890,6 +1894,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Xác nhận xóa', style: GoogleFonts.afacad()),
         content: Text('Bạn có chắc muốn xóa dị ứng này?', style: GoogleFonts.afacad()),
         actions: [
@@ -1921,6 +1926,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Xác nhận xóa', style: GoogleFonts.afacad()),
         content: Text('Bạn có chắc muốn xóa thuốc này?', style: GoogleFonts.afacad()),
         actions: [

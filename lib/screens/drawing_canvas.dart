@@ -191,6 +191,7 @@ class _DrawingCanvasState extends State<DrawingCanvas> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Xóa hết?', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: Text('Bạn có chắc muốn xóa toàn bộ bản vẽ?', style: GoogleFonts.afacad()),
         actions: [

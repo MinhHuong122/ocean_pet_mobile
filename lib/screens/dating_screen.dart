@@ -1202,6 +1202,7 @@ class _DatingScreenState extends State<DatingScreen>
                                 context: context,
                                 barrierDismissible: false,
                                 builder: (context) => AlertDialog(
+                                  backgroundColor: Colors.white,
                                   content: Row(
                                     children: [
                                       const CircularProgressIndicator(

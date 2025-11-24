@@ -376,6 +376,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
+                      backgroundColor: Colors.white,
                       title: const Text('💡 Mẹo lấy mã OTP'),
                       content: SingleChildScrollView(
                         child: Column(

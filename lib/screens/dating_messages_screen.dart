@@ -739,6 +739,7 @@ class _DatingMessagesScreenState extends State<DatingMessagesScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Chọn reaction', style: GoogleFonts.afacad()),
         content: SizedBox(
           width: double.maxFinite,

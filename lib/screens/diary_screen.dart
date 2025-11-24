@@ -832,6 +832,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Row(
           children: [
             const Icon(Icons.lock, color: Color(0xFF8E97FD)),
@@ -1014,6 +1015,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Text('Xóa hoạt động', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
           content: Text(
             'Hoạt động sẽ được chuyển vào thùng rác và lưu trữ trong 30 ngày.',
@@ -1106,6 +1108,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: Colors.white,
               title: Text('Thêm hoạt động mới',
                   style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
@@ -1316,6 +1319,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Tạo thư mục mới', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: folderNameController,
@@ -1382,6 +1386,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Đặt mật khẩu', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: passwordController,
@@ -1425,6 +1430,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Thêm vào thư mục', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1488,6 +1494,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: Wrap(
           spacing: 12,
@@ -3090,6 +3097,7 @@ Generated on: ${DateTime.now()}''';
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Đặt mật khẩu', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: passwordController,
@@ -3133,6 +3141,7 @@ Generated on: ${DateTime.now()}''';
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('Xóa hoạt động', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
         content: Text(
           'Hoạt động sẽ được chuyển vào thùng rác và lưu trữ trong 30 ngày.',

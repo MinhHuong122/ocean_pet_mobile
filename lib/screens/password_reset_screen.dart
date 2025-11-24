@@ -179,6 +179,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text(title),
         content: Text(message),
         actions: [

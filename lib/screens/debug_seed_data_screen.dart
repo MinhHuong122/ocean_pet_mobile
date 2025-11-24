@@ -63,6 +63,7 @@ class _DebugSeedDataScreenState extends State<DebugSeedDataScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: const Text('⚠️ Xác nhận xóa'),
         content: const Text(
           'Bạn có chắc muốn xóa TẤT CẢ dữ liệu? Hành động này không thể hoàn tác!',
