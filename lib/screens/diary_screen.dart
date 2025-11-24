@@ -312,6 +312,44 @@ class _DiaryScreenState extends State<DiaryScreen> {
     }
   }
   
+  // Save diary entry to Firebase
+  Future<void> _saveDiaryEntryToFirebase(DiaryEntry entry) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      
+      await FirebaseFirestore.instance
+          .collection('diary_entries')
+          .doc(entry.id)
+          .set({
+            'id': entry.id,
+            'user_id': user.uid,
+            'title': entry.title,
+            'description': entry.description,
+            'category': entry.category,
+            'date': entry.date,
+            'time': entry.time,
+            'colorValue': entry.color.value,
+            'bgColorValue': entry.bgColor.value,
+            'iconCode': entry.icon.codePoint,
+            'images': entry.images,
+            'audioPath': entry.audioPath,
+            'isPinned': entry.isPinned,
+            'isLocked': entry.isLocked,
+            'password': entry.password,
+            'folderId': entry.folderId,
+            'folderName': entry.folderName,
+            'deletedAt': entry.deletedAt,
+            'reminderDateTime': entry.reminderDateTime,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+      
+      print('💾 Saved diary entry to Firebase: ${entry.id}');
+    } catch (e) {
+      print('❌ Error saving diary entry to Firebase: $e');
+    }
+  }
+  
   @override
   void dispose() {
     _searchController.dispose();
@@ -856,6 +894,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
               });
             }
             _saveDiaryEntries();
+            _saveDiaryEntryToFirebase(updated); // Save to Firebase
             _loadReminderStats(); // Reload reminder count after update
           },
           onDelete: (id) {
@@ -1231,6 +1270,45 @@ class _DiaryScreenState extends State<DiaryScreen> {
       default:
         return const Color(0xFF8E97FD);
     }
+  }
+  
+  // Build reminder stat item
+  Widget _buildReminderStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: GoogleFonts.afacad(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.afacad(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
   }
   
   void _showCreateFolderDialog() {
@@ -3190,45 +3268,6 @@ Generated on: ${DateTime.now()}''';
       default:
         return const Color(0xFF8E97FD);
     }
-  }
-  
-  // Build reminder stat item
-  Widget _buildReminderStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: GoogleFonts.afacad(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.afacad(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
   }
   
   // Show image options (delete or edit)
