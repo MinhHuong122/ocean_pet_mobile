@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/services/FirebaseService.dart';
 import 'package:ocean_pet/services/UserProfileService.dart';
@@ -72,14 +74,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       print('❌ Error loading activities: $e');
     }
     
-    // Load reminder count (active notifications)
+    // Load reminder count from diary entries (SharedPreferences)
     try {
-      await FirebaseService.getUserNotifications().first.then((notifications) {
-        reminders = notifications.where((n) => n['is_read'] == false).length;
-        print('🔔 Reminders loaded: $reminders');
-      });
+      final prefs = await SharedPreferences.getInstance();
+      final String? entriesJson = prefs.getString('diary_entries');
+      
+      if (entriesJson != null) {
+        final List<dynamic> decoded = jsonDecode(entriesJson);
+        final now = DateTime.now();
+        
+        // Count entries with active (future) reminders
+        for (final entry in decoded) {
+          final reminderDateTime = entry['reminderDateTime'];
+          if (reminderDateTime != null && reminderDateTime.isNotEmpty) {
+            try {
+              final reminder = DateTime.parse(reminderDateTime);
+              if (reminder.isAfter(now)) {
+                reminders++;
+              }
+            } catch (e) {
+              // Invalid date format, skip
+            }
+          }
+        }
+      }
+      print('🔔 Reminders from diary loaded: $reminders');
     } catch (e) {
-      print('❌ Error loading reminders: $e');
+      print('❌ Error loading diary reminders: $e');
     }
     
     // Update state với dữ liệu đã load được
