@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'ai_chat_screen.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({Key? key}) : super(key: key);
@@ -107,8 +108,12 @@ class HelpSupportScreen extends StatelessWidget {
                           label: 'Chat AI',
                           color: const Color(0xFFFFB74D),
                           onTap: () {
-                            // Navigate to AI chat
-                            Navigator.pushNamed(context, '/ai_chat');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AIChatScreen(),
+                              ),
+                            );
                           },
                         ),
                       ),
