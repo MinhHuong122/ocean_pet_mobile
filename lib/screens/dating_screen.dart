@@ -21,102 +21,6 @@ class _DatingScreenState extends State<DatingScreen>
   late TabController _tabController;
   final ImagePicker _picker = ImagePicker();
 
-  // Sample pet profiles for dating
-  final List<Map<String, dynamic>> petProfiles = [
-    {
-      'id': '1',
-      'name': 'Mimi',
-      'breed': 'Golden Retriever',
-      'age': '2 năm',
-      'gender': 'Cái',
-      'location': 'Quận 1, TP.HCM',
-      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample1.jpg',
-      'description': 'Mimi là chú chó vui vẻ, thích chơi và kết bạn',
-      'interests': ['Chơi bóng', 'Chạy bộ', 'Bơi lội'],
-      'matches': 12,
-      'viewed': 45,
-    },
-    {
-      'id': '2',
-      'name': 'Max',
-      'breed': 'Pug',
-      'age': '3 năm',
-      'gender': 'Đực',
-      'location': 'Quận 3, TP.HCM',
-      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample2.jpg',
-      'description': 'Max là chú chó thích yên tĩnh nhưng vui vẻ',
-      'interests': ['Ngủ trưa', 'Ăn bánh', 'Thú vị'],
-      'matches': 8,
-      'viewed': 32,
-    },
-    {
-      'id': '3',
-      'name': 'Luna',
-      'breed': 'Husky',
-      'age': '1 năm',
-      'gender': 'Cái',
-      'location': 'Quận 7, TP.HCM',
-      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample3.jpg',
-      'description': 'Luna là chú chó năng động, thích phiêu lưu',
-      'interests': ['Chạy trong tuyết', 'Kéo xe', 'Đi bộ'],
-      'matches': 15,
-      'viewed': 58,
-    },
-    {
-      'id': '4',
-      'name': 'Buddy',
-      'breed': 'Labrador',
-      'age': '4 năm',
-      'gender': 'Đực',
-      'location': 'Quận 5, TP.HCM',
-      'image_url': 'https://res.cloudinary.com/dssazeaz6/image/upload/v1732265400/ocean_pet/dating/profiles/sample4.jpg',
-      'description': 'Buddy là chú chó thân thiện, tốt bụng',
-      'interests': ['Gia đình', 'Trẻ em', 'Công viên'],
-      'matches': 20,
-      'viewed': 72,
-    },
-  ];
-
-  // Sample chats for messaging
-  final List<Map<String, dynamic>> chatConversations = [
-    {
-      'id': '1',
-      'petName': 'Mimi',
-      'ownerName': 'Hoa',
-      'lastMessage': 'Chúc mừng! Mimi và Buddy rất hợp nhau',
-      'timestamp': '2 phút trước',
-      'unread': 2,
-      'image': 'lib/res/drawables/setting/pet1.png',
-    },
-    {
-      'id': '2',
-      'petName': 'Max',
-      'ownerName': 'Tuấn',
-      'lastMessage': 'Bạn có muốn gặp gỡ vào cuối tuần không?',
-      'timestamp': '1 giờ trước',
-      'unread': 0,
-      'image': 'lib/res/drawables/setting/pet2.png',
-    },
-  ];
-
-  // Sample favorites
-  final List<Map<String, dynamic>> favorites = [
-    {
-      'id': '1',
-      'name': 'Mimi',
-      'breed': 'Golden Retriever',
-      'location': 'Quận 1, TP.HCM',
-      'image': 'lib/res/drawables/001-cat.png',
-    },
-    {
-      'id': '4',
-      'name': 'Buddy',
-      'breed': 'Labrador',
-      'location': 'Quận 5, TP.HCM',
-      'image': 'lib/res/drawables/008-parrot.png',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -207,63 +111,340 @@ class _DatingScreenState extends State<DatingScreen>
   }
 
   Widget _buildDiscoverTab() {
-    if (currentCardIndex >= petProfiles.length) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: DatingService.getAllPetProfiles(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final petProfiles = snapshot.data ?? [];
+
+        if (petProfiles.isEmpty || currentCardIndex >= petProfiles.length) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.favorite,
+                  size: 64,
+                  color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Không còn thú cưng nào',
+                  style: GoogleFonts.afacad(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF22223B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Quay lại sau để xem thêm thú cưng mới!',
+                  style: GoogleFonts.afacad(
+                    fontSize: 14,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      currentCardIndex = 0;
+                      cardPosition = Offset.zero;
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: Text(
+                    'Khám phá lại',
+                    style: GoogleFonts.afacad(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final profile = petProfiles[currentCardIndex];
+
+        return Stack(
           children: [
-            Icon(
-              Icons.favorite,
-              size: 64,
-              color: const Color(0xFF8B5CF6).withOpacity(0.3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Không còn thú cưng nào',
-              style: GoogleFonts.afacad(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF22223B),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Quay lại sau để xem thêm thú cưng mới!',
-              style: GoogleFonts.afacad(
-                fontSize: 14,
-                color: const Color(0xFF6B7280),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  currentCardIndex = 0;
-                  cardPosition = Offset.zero;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B5CF6),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
+            // Background gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF8B5CF6).withOpacity(0.05),
+                    Colors.white,
+                  ],
                 ),
               ),
-              child: Text(
-                'Khám phá lại',
-                style: GoogleFonts.afacad(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+            ),
+            // Main card with swipe gesture
+            GestureDetector(
+              onTap: () => _showDetailModal(profile),
+              onPanUpdate: (details) {
+                setState(() {
+                  cardPosition = Offset(
+                    cardPosition.dx + details.delta.dx,
+                    cardPosition.dy + details.delta.dy * 0.5,
+                  );
+                  isCardSwiping = true;
+                });
+              },
+              onPanEnd: (details) {
+                _handleSwipe(details.velocity.pixelsPerSecond.dx);
+              },
+              child: Center(
+                child: Transform.translate(
+                  offset: cardPosition,
+                  child: Transform.rotate(
+                    angle: cardPosition.dx / 500,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Stack(
+                            children: [
+                              // Profile image from Cloudinary
+                              Container(
+                                height: MediaQuery.of(context).size.height * 0.7,
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: NetworkImage(profile['image_url'] ?? ''),
+                                    fit: BoxFit.cover,
+                                    onError: (exception, stackTrace) {
+                                      // Fallback to asset if URL fails
+                                    },
+                                  ),
+                                ),
+                                child: (profile['image_url'] ?? '').isEmpty
+                                    ? Container(
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.pets, size: 64),
+                                      )
+                                    : null,
+                              ),
+                              // Gradient overlay
+                              Container(
+                                height: MediaQuery.of(context).size.height * 0.7,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withOpacity(0.7),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Swipe indicators
+                              if (cardPosition.dx < -50)
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.3),
+                                    ),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.close,
+                                            size: 64,
+                                            color: Colors.red.withOpacity(0.7),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Không thích',
+                                            style: GoogleFonts.afacad(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color:
+                                                  Colors.red.withOpacity(0.7),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (cardPosition.dx > 50)
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.3),
+                                    ),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.favorite,
+                                            size: 64,
+                                            color: Colors.green.withOpacity(0.7),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Yêu thích',
+                                            style: GoogleFonts.afacad(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green
+                                                  .withOpacity(0.7),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Profile info at bottom
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withOpacity(0.9),
+                                      ],
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${profile['pet_name']}, ${profile['age']}',
+                                        style: GoogleFonts.afacad(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white
+                                                  .withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              profile['gender'] ?? 'N/A',
+                                              style: GoogleFonts.afacad(
+                                                fontSize: 12,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            Icons.location_on,
+                                            size: 14,
+                                            color: Colors.white
+                                                .withOpacity(0.7),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              profile['location'] ?? 'N/A',
+                                              style: GoogleFonts.afacad(
+                                                fontSize: 12,
+                                                color: Colors.white
+                                                    .withOpacity(0.7),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        profile['description'] ?? '',
+                                        style: GoogleFonts.afacad(
+                                          fontSize: 13,
+                                          color: Colors.white
+                                              .withOpacity(0.8),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Tap to see details indicator
+                              Positioned(
+                                top: 12,
+                                right: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    color: Colors.white.withOpacity(0.7),
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
           ],
-        ),
-      );
-    }
-
-    final profile = petProfiles[currentCardIndex];
+        );
+      },
+    );
+  }
 
     return Stack(
       children: [
@@ -317,15 +498,14 @@ class _DatingScreenState extends State<DatingScreen>
                       borderRadius: BorderRadius.circular(24),
                       child: Stack(
                         children: [
-                          // Profile image - from Cloudinary
+                          // Profile image
                           Container(
                             height: MediaQuery.of(context).size.height * 0.7,
                             decoration: BoxDecoration(
                               image: DecorationImage(
-                                image: NetworkImage(profile['image_url'] ?? ''),
+                                image: AssetImage(profile['image']),
                                 fit: BoxFit.cover,
                               ),
-                              color: Colors.grey[300],
                             ),
                           ),
                           // Gradient overlay
@@ -422,7 +602,7 @@ class _DatingScreenState extends State<DatingScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${profile['pet_name']}, ${profile['age']}',
+                                    '${profile['name']}, ${profile['age']}',
                                     style: GoogleFonts.afacad(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -526,7 +706,7 @@ class _DatingScreenState extends State<DatingScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '❤️ Bạn thích ${petProfiles[currentCardIndex]['pet_name']}!',
+            '❤️ Bạn thích thú cưng này!',
             style: GoogleFonts.afacad(),
           ),
           backgroundColor: const Color(0xFF8B5CF6),
@@ -539,7 +719,7 @@ class _DatingScreenState extends State<DatingScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '👋 Đã bỏ qua ${petProfiles[currentCardIndex]['pet_name']}',
+            '👋 Đã bỏ qua',
             style: GoogleFonts.afacad(),
           ),
           backgroundColor: const Color(0xFF9CA3AF),

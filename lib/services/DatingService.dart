@@ -109,54 +109,24 @@ class DatingService {
     });
   }
 
-  /// Lấy tất cả dating profiles để khám phá (trừ của user hiện tại)
-  static Stream<List<Map<String, dynamic>>> getAllDatingProfiles() {
-    final userId = currentUserId;
-    if (userId == null) return Stream.value([]);
-
+  /// Lấy TẤT CẢ pet profiles từ tất cả users (cho dating discovery)
+  static Stream<List<Map<String, dynamic>>> getAllPetProfiles() {
     return _firestore
-        .collection('users')
-        .snapshots()
-        .map((usersSnapshot) {
-      List<Map<String, dynamic>> allProfiles = [];
-      
-      for (var userDoc in usersSnapshot.docs) {
-        if (userDoc.id == userId) continue; // Skip current user
-        
-        // Get all active dating profiles from other users
-        _firestore
-            .collection('users')
-            .doc(userDoc.id)
-            .collection('dating_profiles')
-            .where('active', isEqualTo: true)
-            .snapshots()
-            .listen((profileSnapshot) {
-          for (var profileDoc in profileSnapshot.docs) {
-            allProfiles.add({
-              ...profileDoc.data(),
-              'id': profileDoc.id,
-              'owner_id': userDoc.id,
-            });
-          }
-        });
-      }
-      
-      return allProfiles;
-    });
-  }
-
-  /// Lấy favorites của user
-  static Stream<List<String>> getUserFavorites() {
-    final userId = currentUserId;
-    if (userId == null) return Stream.value([]);
-
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('favorites')
+        .collectionGroup('dating_profiles')
+        .where('active', isEqualTo: true)
+        .orderBy('created_at', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => doc.id).toList();
+      return snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            return {
+              ...data,
+              'id': doc.id,
+              'user_id': doc.reference.parent.parent?.id,
+            };
+          })
+          .toList();
     });
   }
 
