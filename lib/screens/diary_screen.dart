@@ -1491,121 +1491,44 @@ class _DiaryScreenState extends State<DiaryScreen> {
       const Color(0xFFE6FFE6), // Xanh lá nhạt
     ];
     
-    Color selectedDialogColor = Colors.white;
-    
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: selectedDialogColor,
-            title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Phần chọn màu nền cho bản ghi (entry)
-                Text(
-                  'Màu nền bản ghi',
-                  style: GoogleFonts.afacad(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: const Color(0xFF22223B),
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
+        content: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: colors.map((color) {
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  entry.bgColor = color;
+                  _saveDiaryEntries();
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã đổi màu nền', style: GoogleFonts.afacad()),
+                    backgroundColor: const Color(0xFF66BB6A),
+                  ),
+                );
+              },
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
+                    width: entry.bgColor == color ? 3 : 1,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: colors.map((color) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          entry.bgColor = color;
-                          _saveDiaryEntries();
-                        });
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Đã đổi màu nền', style: GoogleFonts.afacad()),
-                            backgroundColor: const Color(0xFF66BB6A),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
-                            width: entry.bgColor == color ? 3 : 1,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Phần chọn màu nền cho popup
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Màu nền popup',
-                        style: GoogleFonts.afacad(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: const Color(0xFF22223B),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: colors.map((color) {
-                          return GestureDetector(
-                            onTap: () {
-                              setDialogState(() {
-                                selectedDialogColor = color;
-                              });
-                            },
-                            child: Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: color,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: selectedDialogColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
-                                  width: selectedDialogColor == color ? 3 : 1,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Đóng', style: GoogleFonts.afacad(color: const Color(0xFF8E97FD))),
               ),
-            ],
-          );
-        },
+            );
+          }).toList(),
+        ),
       ),
     );
   }
