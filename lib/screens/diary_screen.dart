@@ -1495,11 +1495,13 @@ class _DiaryScreenState extends State<DiaryScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold)),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: colors.map((color) {
+        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        content: Center(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.center,
+            children: colors.map((color) {
             return GestureDetector(
               onTap: () {
                 setState(() {
@@ -1515,8 +1517,8 @@ class _DiaryScreenState extends State<DiaryScreen> {
                 );
               },
               child: Container(
-                width: 50,
-                height: 50,
+                width: 25,
+                height: 25,
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(12),
@@ -1528,6 +1530,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
               ),
             );
           }).toList(),
+          ),
         ),
       ),
     );
