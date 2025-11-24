@@ -99,6 +99,10 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
         return;
       }
 
+      print('🔍 [PetSummaryScreen] Looking for appointments...');
+      print('   Pet ID: ${widget.petId}');
+      print('   User ID: ${user.uid}');
+
       // Query appointments directly from Firestore for this pet
       final appointmentsSnapshot = await FirebaseFirestore.instance
           .collection('appointments')
@@ -106,28 +110,48 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
           .where('user_id', isEqualTo: user.uid)
           .get();
 
+      print('📊 [PetSummaryScreen] Total appointments found: ${appointmentsSnapshot.docs.length}');
+
       if (appointmentsSnapshot.docs.isNotEmpty) {
         final loadedAppointments = <Map<String, dynamic>>[];
         
         for (var doc in appointmentsSnapshot.docs) {
           final data = doc.data();
+          print('📋 [PetSummaryScreen] Processing appointment: ${doc.id}');
+          print('    Data keys: ${data.keys.toList()}');
+          
           try {
-            final appointmentDate = (data['date'] is Timestamp)
-                ? (data['date'] as Timestamp).toDate()
-                : DateTime.parse(data['date'].toString());
-            
-            // Only show future appointments (next 30 days)
-            if (appointmentDate.isAfter(DateTime.now()) &&
-                appointmentDate.isBefore(DateTime.now().add(const Duration(days: 30)))) {
-              loadedAppointments.add({
-                'id': doc.id,
-                'condition': data['reason'] ?? data['diagnosis'] ?? 'Khám tổng quát',
-                'date': appointmentDate.toString().split(' ')[0],
-                'doctor': data['veterinarian'] ?? data['vet_name'] ?? 'Chưa xác định',
-                'description': data['notes'] ?? data['symptoms'] ?? '',
-                'time': data['time'] ?? '10:00',
-              });
+            // Handle both 'appointment_date' and 'date' field names
+            var appointmentDate;
+            if (data['appointment_date'] is Timestamp) {
+              appointmentDate = (data['appointment_date'] as Timestamp).toDate();
+            } else if (data['date'] is Timestamp) {
+              appointmentDate = (data['date'] as Timestamp).toDate();
+            } else if (data['appointment_date'] is String) {
+              appointmentDate = DateTime.parse(data['appointment_date'].toString());
+            } else if (data['date'] is String) {
+              appointmentDate = DateTime.parse(data['date'].toString());
+            } else {
+              print('⚠️ [PetSummaryScreen] Unknown date format: ${data['appointment_date'] ?? data['date']}');
+              continue;
             }
+            
+            print('    Appointment date: $appointmentDate');
+            print('    Now: ${DateTime.now()}');
+            print('    Days until: ${appointmentDate.difference(DateTime.now()).inDays}');
+            
+            // Show ALL appointments, not just next 30 days
+            // This helps debug if appointments are being saved at all
+            loadedAppointments.add({
+              'id': doc.id,
+              'condition': data['type'] ?? data['reason'] ?? data['diagnosis'] ?? 'Khám tổng quát',
+              'date': appointmentDate.toString().split(' ')[0],
+              'doctor': data['vet_name'] ?? data['veterinarian'] ?? 'Chưa xác định',
+              'description': data['notes'] ?? data['symptoms'] ?? '',
+              'time': data['appointment_time'] ?? data['time'] ?? '10:00',
+            });
+            
+            print('✅ [PetSummaryScreen] Added appointment: ${data['type'] ?? data['reason']}');
           } catch (e) {
             print('❌ Error parsing appointment date: $e');
           }
@@ -136,9 +160,9 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
         setState(() {
           appointments = loadedAppointments;
         });
-        print('✅ Loaded ${appointments.length} upcoming appointments for ${widget.petName}');
+        print('✅ [PetSummaryScreen] Loaded ${appointments.length} total appointments for ${widget.petName}');
       } else {
-        print('⚠️ No appointments found for ${widget.petName}');
+        print('⚠️ [PetSummaryScreen] No appointments found in Firebase for pet ${widget.petId}');
         setState(() {
           appointments = [];
         });
@@ -148,7 +172,7 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
         isLoading = false;
       });
     } catch (e) {
-      print('❌ Error loading appointments: $e');
+      print('❌ [PetSummaryScreen] Error loading appointments: $e');
       setState(() {
         isLoading = false;
       });

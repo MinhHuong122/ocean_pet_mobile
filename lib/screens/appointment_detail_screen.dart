@@ -1075,6 +1075,11 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         }
 
         print('📝 Creating new appointment');
+        print('   Selected Pet ID: $_selectedPetId');
+        print('   Title: ${_titleController.text}');
+        print('   Date: $_selectedDate');
+        print('   Time: $_selectedTime');
+        
         final appointmentId = await AppointmentService.createAppointment(
           petId: _selectedPetId!,
           type: _titleController.text,
@@ -1086,7 +1091,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           isRecurring: _isRecurring,
           recurringCycle: _recurringCycle,
         );
-        print('✅ Appointment created: $appointmentId');
+        print('✅ Appointment created with ID: $appointmentId');
       }
 
       // Prepare appointment data for callback
