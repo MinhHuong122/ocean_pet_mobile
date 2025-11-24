@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import './youtube_player_screen.dart';
 import '../helpers/youtube_utils.dart';
+import '../services/TrainingService.dart';
 
 class TrainingVideoScreen extends StatefulWidget {
   const TrainingVideoScreen({super.key});
@@ -19,7 +20,9 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
   List<Map<String, dynamic>> allVideos = [];
   List<Map<String, dynamic>> filteredVideos = [];
   Set<String> favoriteVideoIds = {};
+  Set<String> watchedVideoIds = {};
   bool isLoading = true;
+  Map<String, dynamic> progressStats = {};
   
   // Filter states
   String selectedAnimalType = 'Tất cả';
@@ -141,6 +144,7 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
   void initState() {
     super.initState();
     _loadFavorites();
+    _loadProgress();
     _loadVideos();
   }
 
@@ -156,6 +160,18 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
     setState(() {
       favoriteVideoIds = favorites.toSet();
     });
+  }
+
+  Future<void> _loadProgress() async {
+    try {
+      final stats = await TrainingService.getProgressStats();
+      setState(() {
+        progressStats = stats;
+        watchedVideoIds = Set<String>.from(stats['watched_videos'] ?? []);
+      });
+    } catch (e) {
+      debugPrint('Error loading progress: $e');
+    }
   }
 
   Future<void> _saveFavorites() async {
@@ -285,6 +301,31 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
         ),
         centerTitle: true,
         actions: [
+          // Progress indicator
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${progressStats['total_watched'] ?? 0}/${progressStats['total_videos'] ?? 0}',
+                  style: GoogleFonts.afacad(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF8E97FD),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${progressStats['progress_percentage'] ?? '0.0'}%',
+                  style: GoogleFonts.afacad(
+                    fontSize: 11,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ),
           IconButton(
             icon: Badge(
               label: Text('${favoriteVideoIds.length}'),
@@ -296,6 +337,10 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           IconButton(
             icon: const Icon(Icons.card_giftcard, color: Color(0xFF8E97FD)),
             onPressed: _showDonateDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.checklist, color: Color(0xFF8E97FD)),
+            onPressed: _showProgressChecklist,
           ),
         ],
       ),
@@ -440,6 +485,7 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
 
   Widget _buildVideoCard(Map<String, dynamic> video) {
     final isFavorite = favoriteVideoIds.contains(video['id']);
+    final isWatched = watchedVideoIds.contains(video['id']);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -467,99 +513,122 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
               Row(
                 children: [
                   // Thumbnail - YouTube Real Image
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Image.network(
-                          getYoutubeThumbnail(
-                            extractYoutubeId(video['url']) ?? '',
-                            quality: 'maxresdefault',
-                          ),
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Image.network(
+                              getYoutubeThumbnail(
+                                extractYoutubeId(video['url']) ?? '',
+                                quality: 'maxresdefault',
+                              ),
                               width: 100,
                               height: 100,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFFAB47BC), Color(0xFF8E24AA)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.play_circle,
-                                color: Colors.white,
-                                size: 48,
-                              ),
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 30,
-                                  height: 30,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFAB47BC), Color(0xFF8E24AA)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_circle,
+                                    color: Colors.white,
+                                    size: 48,
+                                  ),
+                                );
+                              },
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 30,
+                                      height: 30,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF8E97FD),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            Positioned.fill(
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.9),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_arrow,
                                     color: Color(0xFF8E97FD),
+                                    size: 24,
                                   ),
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                        Positioned.fill(
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.play_arrow,
-                                color: Color(0xFF8E97FD),
-                                size: 24,
+                            ),
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  video['duration'],
+                                  style: GoogleFonts.afacad(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
+                      ),
+                      // Watched badge
+                      if (isWatched)
                         Positioned(
-                          bottom: 8,
-                          right: 8,
+                          top: -8,
+                          right: -8,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(4),
+                              color: const Color(0xFF66BB6A),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
                             ),
-                            child: Text(
-                              video['duration'],
-                              style: GoogleFonts.afacad(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 16,
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                   const SizedBox(width: 16),
                   // Info
@@ -1005,7 +1074,28 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           videoTitle: videoTitle,
         ),
       ),
-    );
+    ).then((_) async {
+      // Mark video as watched after player closes
+      final videoId = _getVideoIdFromUrl(videoUrl);
+      if (videoId != null) {
+        try {
+          await TrainingService.markVideoAsWatched(videoId);
+          await _loadProgress();
+        } catch (e) {
+          debugPrint('Error marking video as watched: $e');
+        }
+      }
+    });
+  }
+
+  String? _getVideoIdFromUrl(String url) {
+    // Find video by URL in allVideos list
+    try {
+      final video = allVideos.firstWhere((v) => v['url'] == url);
+      return video['id'];
+    } catch (e) {
+      return null;
+    }
   }
 
   void _showDonateDialog() {
@@ -1159,6 +1249,220 @@ class _TrainingVideoScreenState extends State<TrainingVideoScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showProgressChecklist() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.checklist, color: Color(0xFF8E97FD), size: 28),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Tiến độ huấn luyện',
+                    style: GoogleFonts.afacad(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Overall progress
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8E97FD).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tổng tiến độ',
+                          style: GoogleFonts.afacad(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF22223B),
+                          ),
+                        ),
+                        Text(
+                          '${progressStats['total_watched'] ?? 0}/${progressStats['total_videos'] ?? 0} video',
+                          style: GoogleFonts.afacad(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF8E97FD),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: (progressStats['total_videos'] ?? 0) > 0
+                            ? (progressStats['total_watched'] ?? 0) /
+                                (progressStats['total_videos'] ?? 1)
+                            : 0,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF8E97FD),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${progressStats['progress_percentage'] ?? '0.0'}% hoàn thành',
+                      style: GoogleFonts.afacad(
+                        fontSize: 14,
+                        color: const Color(0xFF6B7280),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Danh sách video',
+                style: GoogleFonts.afacad(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF22223B),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Videos checklist
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: allVideos.length,
+                  itemBuilder: (context, index) {
+                    final video = allVideos[index];
+                    final isWatched = watchedVideoIds.contains(video['id']);
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(
+                            color: isWatched
+                                ? const Color(0xFF66BB6A)
+                                : Colors.grey[300]!,
+                            width: 4,
+                          ),
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: isWatched
+                                ? const Color(0xFF66BB6A).withOpacity(0.1)
+                                : Colors.grey[200],
+                          ),
+                          child: Center(
+                            child: Icon(
+                              isWatched ? Icons.check_circle : Icons.play_circle,
+                              color: isWatched
+                                  ? const Color(0xFF66BB6A)
+                                  : Colors.grey[400],
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          video['title'],
+                          style: GoogleFonts.afacad(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF22223B),
+                            decoration: isWatched
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getLevelColor(video['level'])
+                                    .withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                video['level'],
+                                style: GoogleFonts.afacad(
+                                  fontSize: 10,
+                                  color: _getLevelColor(video['level']),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              video['animalType'],
+                              style: GoogleFonts.afacad(
+                                fontSize: 10,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                        trailing: isWatched
+                            ? const Icon(
+                                Icons.done,
+                                color: Color(0xFF66BB6A),
+                                size: 24,
+                              )
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
