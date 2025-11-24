@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:ocean_pet/services/FirebaseService.dart';
 import 'package:ocean_pet/services/CloudinaryService.dart';
+import 'package:ocean_pet/helpers/keyboard_utils.dart';
 
 class EditPetProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? existingPet;
@@ -18,7 +19,7 @@ class EditPetProfileScreen extends StatefulWidget {
   State<EditPetProfileScreen> createState() => _EditPetProfileScreenState();
 }
 
-class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
+class _EditPetProfileScreenState extends State<EditPetProfileScreen> with KeyboardFormMixin {
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
   bool _isSaving = false;
@@ -293,6 +294,7 @@ class _EditPetProfileScreenState extends State<EditPetProfileScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: const Color(0xFF8E97FD),
         elevation: 0,

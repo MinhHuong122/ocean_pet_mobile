@@ -1,5 +1,27 @@
 import 'package:flutter/material.dart';
 
+/// Mixin để tự động xử lý keyboard overflow cho các màn hình form
+mixin KeyboardFormMixin {
+  /// Wrap form body với SingleChildScrollView để xử lý keyboard
+  Widget wrapWithKeyboardScroll(
+    BuildContext context,
+    Widget child, {
+    bool scrollable = true,
+  }) {
+    if (!scrollable) return child;
+
+    return SingleChildScrollView(
+      reverse: true,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Utility class để xử lý các vấn đề liên quan đến bàn phím
 class KeyboardUtil {
   /// Ẩn bàn phím

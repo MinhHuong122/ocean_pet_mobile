@@ -12,6 +12,7 @@ import 'dart:io';
 import 'dart:convert';
 import '../services/LostPetService.dart';
 import '../services/CloudinaryService.dart';
+import '../helpers/keyboard_utils.dart';
 
 class LostPetScreen extends StatefulWidget {
   final bool useFirebase;
@@ -22,7 +23,7 @@ class LostPetScreen extends StatefulWidget {
   State<LostPetScreen> createState() => _LostPetScreenState();
 }
 
-class _LostPetScreenState extends State<LostPetScreen> {
+class _LostPetScreenState extends State<LostPetScreen> with KeyboardFormMixin {
   int _selectedTab = 0; // 0: Browse, 1: My Posts
   List<Map<String, dynamic>> _lostPets = [];
   String? _currentUserId;

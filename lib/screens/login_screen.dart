@@ -7,6 +7,7 @@ import 'package:ocean_pet/services/QuickLoginService.dart';
 import 'package:ocean_pet/screens/welcome_screen.dart';
 import 'package:ocean_pet/screens/register_screen.dart';
 import 'package:ocean_pet/screens/forgot_password_screen.dart';
+import 'package:ocean_pet/helpers/keyboard_utils.dart';
 import 'package:app_links/app_links.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with KeyboardFormMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -264,19 +265,23 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              Text(
-                'Chào mừng trở lại!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+        child: wrapWithKeyboardScroll(
+          context,
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title
+                Text(
+                  'Chào mừng trở lại!',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   fontFamily: R.font.sfpro,
                 ),
               ),
@@ -478,6 +483,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
             ],
           ),
+        ),
         ),
       ),
     );

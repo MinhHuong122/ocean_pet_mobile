@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/UserProfileService.dart';
+import '../helpers/keyboard_utils.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
   final String? userName;
@@ -26,7 +27,7 @@ class ProfileDetailScreen extends StatefulWidget {
   State<ProfileDetailScreen> createState() => _ProfileDetailScreenState();
 }
 
-class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
+class _ProfileDetailScreenState extends State<ProfileDetailScreen> with KeyboardFormMixin {
   late TextEditingController nameController;
   late TextEditingController phoneController;
   late TextEditingController addressController;
@@ -62,6 +63,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: const Color(0xFF8E97FD),
         elevation: 0,

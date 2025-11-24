@@ -4,6 +4,7 @@ import 'package:ocean_pet/res/R.dart';
 import 'package:ocean_pet/services/AuthService.dart';
 import 'package:ocean_pet/screens/welcome_screen.dart';
 import 'package:ocean_pet/screens/login_screen.dart';
+import 'package:ocean_pet/helpers/keyboard_utils.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 
@@ -14,7 +15,7 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen> with KeyboardFormMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -240,33 +241,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              Text(
-                'Tạo tài khoản của bạn',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  fontFamily: R.font.sfpro,
+        child: wrapWithKeyboardScroll(
+          context,
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title
+                Text(
+                  'Tạo tài khoản của bạn',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                    fontFamily: R.font.sfpro,
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 40),
+                const SizedBox(height: 40),
 
-              // Social login buttons
-              _buildSocialButton(
-                imagePath: 'lib/res/drawables/setting/Facebook.png',
-                text: 'TIẾP TỤC VỚI FACEBOOK',
-                backgroundColor: const Color.fromARGB(255, 95, 92, 246),
-                textColor: Colors.white,
-                onTap: _registerWithFacebook,
-              ),
+                // Social login buttons
+                _buildSocialButton(
+                  imagePath: 'lib/res/drawables/setting/Facebook.png',
+                  text: 'TIẾP TỤC VỚI FACEBOOK',
+                  backgroundColor: const Color.fromARGB(255, 95, 92, 246),
+                  textColor: Colors.white,
+                  onTap: _registerWithFacebook,
+                ),
 
               const SizedBox(height: 16),
 
@@ -479,6 +484,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
             ],
           ),
+        ),
         ),
       ),
     );

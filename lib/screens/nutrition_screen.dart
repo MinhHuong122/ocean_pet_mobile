@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/FirebaseService.dart';
+import '../helpers/keyboard_utils.dart';
 
 class NutritionScreen extends StatefulWidget {
   final Map<String, dynamic>? petData;
@@ -17,7 +18,7 @@ class NutritionScreen extends StatefulWidget {
   State<NutritionScreen> createState() => _NutritionScreenState();
 }
 
-class _NutritionScreenState extends State<NutritionScreen> {
+class _NutritionScreenState extends State<NutritionScreen> with KeyboardFormMixin {
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
@@ -444,10 +445,12 @@ Chúc mừng! Bạn đang chăm sóc thú cưng rất tốt! 💚
         ),
         centerTitle: true,
       ),
+      resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Header
             Container(
