@@ -894,8 +894,8 @@ class DatingService {
 
   // ==================== CLOUDINARY INTEGRATION ====================
 
-  static const String _cloudName = 'YOUR_CLOUD_NAME';
-  static const String _uploadPreset = 'ocean_pet_unsigned';
+  static const String _cloudName = 'dssazeaz6';
+  static const String _uploadPreset = 'ocean_pet';
 
   /// Upload ảnh đến Cloudinary
   static Future<String?> uploadImageToCloudinary({

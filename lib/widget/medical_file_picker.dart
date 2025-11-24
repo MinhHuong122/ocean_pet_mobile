@@ -146,7 +146,7 @@ class _MedicalFilePickerState extends State<MedicalFilePicker> {
 
     try {
       // Initialize Cloudinary - Replace with your credentials
-      final cloudinary = CloudinaryPublic('YOUR_CLOUD_NAME', 'ocean_pet_unsigned', cache: false);
+      final cloudinary = CloudinaryPublic('dssazeaz6', 'ocean_pet', cache: false);
       
       List<Map<String, dynamic>> allFiles = _getAllFilesFlat();
       
