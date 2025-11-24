@@ -66,10 +66,28 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
 
   Future<void> _loadMedicalData() async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      // Load diary entries for this pet from Firestore
+      final diarySnapshot = await FirebaseFirestore.instance
+          .collection('diary_entries')
+          .where('user_id', isEqualTo: user.uid)
+          .where('pet_id', isEqualTo: widget.petId)
+          .orderBy('entry_date', descending: true)
+          .get();
+
+      print('📝 Loaded ${diarySnapshot.docs.length} diary entries for pet ${widget.petId}');
+
+      // Load medical records for this pet
       final recordSnapshot = await MedicalRecordService.getMedicalRecord(widget.petId);
 
       if (recordSnapshot != null) {
         setState(() {
+          // Get medical histories from consultations
           medicalHistories = recordSnapshot.consultations
               .map((c) => {
                 'id': c.id,
@@ -86,7 +104,7 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
                 try {
                   final date = DateTime.parse(m['date']);
                   return date.isAfter(DateTime.now()) &&
-                      date.isBefore(DateTime.now().add(Duration(days: 30)));
+                      date.isBefore(DateTime.now().add(const Duration(days: 30)));
                 } catch (e) {
                   return false;
                 }
@@ -101,7 +119,7 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
         });
       }
     } catch (e) {
-      print('Error loading medical data: $e');
+      print('❌ Error loading medical data: $e');
       setState(() {
         isLoading = false;
       });
