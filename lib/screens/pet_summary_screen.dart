@@ -445,79 +445,204 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
 
   Widget _buildDiaryTab() {
     return Column(
-      children: medicalHistories.isEmpty
-          ? [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DiaryScreen(),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green[200]!),
-                  ),
-                  child: Row(
+      children: [
+        // Add diary button - always shown
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DiaryScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.note_add, color: Colors.green[700], size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.note_add, color: Colors.green[700], size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Thêm Nhật Ký',
-                              style: GoogleFonts.afacad(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Tạo nhật ký sức khỏe cho thú cưng của bạn',
-                              style: GoogleFonts.afacad(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
+                      Text(
+                        'Thêm Nhật Ký',
+                        style: GoogleFonts.afacad(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Icon(Icons.arrow_forward, color: Colors.green[700]),
+                      Text(
+                        'Tạo nhật ký sức khỏe cho thú cưng của bạn',
+                        style: GoogleFonts.afacad(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                Icon(Icons.arrow_forward, color: Colors.green[700]),
+              ],
+            ),
+          ),
+        ),
+        
+        // Medical history list
+        if (medicalHistories.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Lịch Sử Y Tế',
+            style: GoogleFonts.afacad(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...medicalHistories.map((history) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
               ),
-            ]
-          : medicalHistories.map((history) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        history['condition'] ?? '',
+                        style: GoogleFonts.afacad(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        history['date'] ?? '',
+                        style: GoogleFonts.afacad(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    history['description'] ?? '',
+                    style: GoogleFonts.afacad(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAppointmentsTab() {
+    return Column(
+      children: [
+        // Booking button - always shown
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CareScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_month, color: Colors.orange[700], size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Đặt Lịch Hẹn',
+                        style: GoogleFonts.afacad(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Tạo lịch khám cho thú cưng của bạn',
+                        style: GoogleFonts.afacad(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Icon(Icons.arrow_forward, color: Colors.orange[700]),
+              ],
+            ),
+          ),
+        ),
+        
+        // Appointments list
+        if (appointments.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Lịch Hẹn Sắp Tới',
+            style: GoogleFonts.afacad(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...appointments.map((apt) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, color: Colors.orange, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          history['condition'] ?? '',
+                          apt['condition'] ?? '',
                           style: GoogleFonts.afacad(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
-                          history['date'] ?? '',
+                          apt['date'] ?? '',
                           style: GoogleFonts.afacad(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -525,112 +650,13 @@ class _PetSummaryScreenState extends State<PetSummaryScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      history['description'] ?? '',
-                      style: GoogleFonts.afacad(
-                        fontSize: 12,
-                        color: Colors.grey[700],
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-    );
-  }
-
-  Widget _buildAppointmentsTab() {
-    return Column(
-      children: appointments.isEmpty
-          ? [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CareScreen(),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange[200]!),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_month, color: Colors.orange[700], size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Đặt Lịch Hẹn',
-                              style: GoogleFonts.afacad(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Tạo lịch khám cho thú cưng của bạn',
-                              style: GoogleFonts.afacad(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.arrow_forward, color: Colors.orange[700]),
-                    ],
-                  ),
-                ),
+                ],
               ),
-            ]
-          : appointments.map((apt) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.calendar_today, color: Colors.orange, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            apt['condition'] ?? '',
-                            style: GoogleFonts.afacad(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            apt['date'] ?? '',
-                            style: GoogleFonts.afacad(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            );
+          }).toList(),
+        ],
+      ],
     );
   }
 
