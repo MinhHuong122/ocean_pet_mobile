@@ -1495,41 +1495,46 @@ class _DiaryScreenState extends State<DiaryScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        content: Center(
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: colors.map((color) {
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  entry.bgColor = color;
-                  _saveDiaryEntries();
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã đổi màu nền', style: GoogleFonts.afacad()),
-                    backgroundColor: const Color(0xFF66BB6A),
-                  ),
-                );
-              },
-              child: Container(
-                width: 25,
-                height: 25,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
-                    width: entry.bgColor == color ? 3 : 1,
+        contentPadding: const EdgeInsets.only(top: 16, bottom: 16, left: 20, right: 20),
+        title: Text('Chọn màu nền', style: GoogleFonts.afacad(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 60,
+          child: Center(
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: colors.map((color) {
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    entry.bgColor = color;
+                    _saveDiaryEntries();
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã đổi màu nền', style: GoogleFonts.afacad()),
+                      backgroundColor: const Color(0xFF66BB6A),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: entry.bgColor == color ? const Color(0xFF8E97FD) : Colors.grey[300]!,
+                      width: entry.bgColor == color ? 3 : 1,
+                    ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+            ),
           ),
         ),
       ),
