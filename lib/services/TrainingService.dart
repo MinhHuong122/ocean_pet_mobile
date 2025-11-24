@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class TrainingService {
   // Cloudinary configuration - UPDATE WITH YOUR CREDENTIALS
   static const String CLOUDINARY_CLOUD_NAME = 'dssazeaz6';
-  static const String CLOUDINARY_API_KEY = 'YOUR_API_KEY';
+  static const String CLOUDINARY_API_KEY = '';  // Not needed for unsigned uploads
   static const String CLOUDINARY_UPLOAD_PRESET = 'ocean_pet';
 
   // ==================== VIDEO MANAGEMENT ====================
