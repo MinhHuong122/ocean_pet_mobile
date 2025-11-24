@@ -1230,12 +1230,14 @@ class _DatingScreenState extends State<DatingScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             final name = nameController.text.trim();
                             final breed = breedController.text.trim();
                             final age = ageController.text.trim();
+                            final location = locationController.text.trim();
+                            final description = descriptionController.text.trim();
 
-                            if (name.isEmpty || breed.isEmpty || age.isEmpty) {
+                            if (name.isEmpty || breed.isEmpty || age.isEmpty || location.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
@@ -1261,22 +1263,97 @@ class _DatingScreenState extends State<DatingScreen>
                               return;
                             }
 
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  '✅ Thẻ của $name đã được đăng thành công!',
-                                  style: GoogleFonts.afacad(),
+                            // Show loading dialog
+                            if (context.mounted) {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => AlertDialog(
+                                  content: Row(
+                                    children: [
+                                      const CircularProgressIndicator(
+                                        color: Color(0xFF8B5CF6),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Text(
+                                        'Đang tải lên...',
+                                        style: GoogleFonts.afacad(),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                backgroundColor: const Color(0xFF8B5CF6),
-                              ),
-                            );
-                            
-                            nameController.dispose();
-                            breedController.dispose();
-                            descriptionController.dispose();
-                            ageController.dispose();
-                            locationController.dispose();
+                              );
+                            }
+
+                            try {
+                              // Upload image to Cloudinary
+                              final imageUrl = await DatingService.uploadImageToCloudinary(
+                                filePath: imagePath!,
+                                folder: 'ocean_pet/dating/profiles',
+                              );
+
+                              if (imageUrl == null) {
+                                if (context.mounted) {
+                                  Navigator.pop(context); // Close loading dialog
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '❌ Lỗi tải ảnh lên - kiểm tra Cloudinary setup',
+                                        style: GoogleFonts.afacad(),
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+
+                              // Create pet profile in Firebase
+                              await DatingService.createPetProfile(
+                                petName: name,
+                                breed: breed,
+                                age: age,
+                                gender: selectedGender,
+                                location: location,
+                                imageUrl: imageUrl,
+                                description: description,
+                                interests: [], // Can add interests picker later
+                              );
+
+                              if (context.mounted) {
+                                Navigator.pop(context); // Close loading dialog
+                                Navigator.pop(context); // Close post dialog
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '✅ Thẻ của $name đã được đăng thành công!',
+                                      style: GoogleFonts.afacad(),
+                                    ),
+                                    backgroundColor: const Color(0xFF8B5CF6),
+                                  ),
+                                );
+                              }
+
+                              nameController.dispose();
+                              breedController.dispose();
+                              descriptionController.dispose();
+                              ageController.dispose();
+                              locationController.dispose();
+                            } catch (e) {
+                              if (context.mounted) {
+                                Navigator.pop(context); // Close loading dialog
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Lỗi: $e',
+                                      style: GoogleFonts.afacad(),
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF8B5CF6),

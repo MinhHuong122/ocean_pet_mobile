@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 /// Service để quản lý tính năng hẹn hò thú cưng
 /// Tối ưu hóa cho dating features: Profiles, Likes, Matches, Messaging
@@ -889,5 +891,82 @@ class DatingService {
       rethrow;
     }
   }
-}
 
+  // ==================== CLOUDINARY INTEGRATION ====================
+
+  static const String _cloudName = 'YOUR_CLOUD_NAME';
+  static const String _uploadPreset = 'ocean_pet_unsigned';
+
+  /// Upload ảnh đến Cloudinary
+  static Future<String?> uploadImageToCloudinary({
+    required String filePath,
+    String folder = 'ocean_pet/dating',
+  }) async {
+    try {
+      final uri = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$_cloudName/image/upload',
+      );
+
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['upload_preset'] = _uploadPreset;
+      request.fields['folder'] = folder;
+
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath),
+      );
+
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        final responseData = await response.stream.bytesToString();
+        final jsonData = json.decode(responseData);
+        return jsonData['secure_url'] as String;
+      } else {
+        print('Cloudinary upload error: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error uploading to Cloudinary: $e');
+      return null;
+    }
+  }
+
+  /// Upload video đến Cloudinary
+  static Future<Map<String, String>?> uploadVideoToCloudinary({
+    required String filePath,
+    String folder = 'ocean_pet/dating',
+  }) async {
+    try {
+      final uri = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$_cloudName/video/upload',
+      );
+
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['upload_preset'] = _uploadPreset;
+      request.fields['folder'] = folder;
+
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath),
+      );
+
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        final responseData = await response.stream.bytesToString();
+        final jsonData = json.decode(responseData);
+        
+        return {
+          'video_url': jsonData['secure_url'] as String,
+          'thumbnail_url': jsonData['eager']?[0]['secure_url'] as String? ?? '',
+          'duration': (jsonData['duration'] as num?)?.toString() ?? '0',
+        };
+      } else {
+        print('Cloudinary video upload error: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error uploading video to Cloudinary: $e');
+      return null;
+    }
+  }
+}
