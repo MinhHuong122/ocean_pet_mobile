@@ -3386,8 +3386,23 @@ Generated on: ${DateTime.now()}''';
   
   // Set reminder for note
   void _setReminder() {
-    DateTime selectedDate = DateTime.now();
-    TimeOfDay selectedTime = TimeOfDay.now();
+    // If reminder exists, use its date/time; otherwise use current date/time
+    DateTime selectedDate;
+    TimeOfDay selectedTime;
+    
+    if (widget.entry.reminderDateTime != null) {
+      try {
+        final existingReminder = DateTime.parse(widget.entry.reminderDateTime!);
+        selectedDate = existingReminder;
+        selectedTime = TimeOfDay.fromDateTime(existingReminder);
+      } catch (e) {
+        selectedDate = DateTime.now();
+        selectedTime = TimeOfDay.now();
+      }
+    } else {
+      selectedDate = DateTime.now();
+      selectedTime = TimeOfDay.now();
+    }
     
     showDialog(
       context: context,
